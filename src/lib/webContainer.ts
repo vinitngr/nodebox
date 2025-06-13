@@ -1,64 +1,103 @@
 import { FileSystemTree, WebContainer } from "@webcontainer/api";
-import axios from 'axios';
 
 interface LogContainer {
     work: string,
     logs: string
 }
-// interface ContainerFile {
-//     [key: string]: { files: { content: string } };
-// }
-interface Unsupported {
-    error: string,
-    files: {} | undefined
+interface ContainerFile {
+    [name: string]: { file: { contents?: string } };
 }
 
 export class hostContainer extends WebContainer {
-    private containerfiles: FileSystemTree;
+    private containerfiles: ContainerFile | null = {};
     public logContainer: LogContainer[] = [];
-    public url? : string | undefined
-    public option : string | undefined
-    
+    public url?: string | undefined
+    public option: string | undefined
 
-    constructor({ option, files , url }: { option: string, files?: FileList , url? : string }) {
+
+    constructor({ option, url }: { option: string, url?: string }) {
         super();
-        if(url){
+        if (url) {
             this.url = url
         }
-        this.containerfiles = this._containerFormat(files)
+        this.option = option
     }
 
-    private _containerFormat = (files?: FileList): FileSystemTree => {
-        if (this.option == 'github' && this.url) {
+    private _containerFormat = async (files?: FileList) : Promise<Error | null> => {
+        if (this.option === "github" && this.url) {
+            const axios = (await import('axios')).default;
+            const { unzipSync, strFromU8 } = await import("fflate");
             try {
-                const match = this.url.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)(?:\.git)?$/);
-                const zip = axios.get(this.url)
-                return {} as FileSystemTree
-            } catch (error) {
-                throw new Error("error while getting data from github")                
+                const match = this.url.match(
+                    /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/archive\/refs\/heads\/([^\/]+)\.zip$/
+                );
+                if (!match) throw new Error("Invalid GitHub .zip URL");
+
+                const [_, user, repo, branch] = match;
+                const zipUrl = `https://codeload.github.com/${user}/${repo}/zip/refs/heads/${branch}`;
+
+                const res = await axios.get(zipUrl, { responseType: "arraybuffer" });
+
+                const zip = unzipSync(new Uint8Array(res.data));
+                const containerFiles: ContainerFile = {};
+                for (const path in zip) {
+                    if (!path.endsWith('/')) { // skip directories
+                        const parts = path.split('/');
+                        const folder = parts.shift() || 'root';
+
+                        if (!containerFiles[folder]) containerFiles[folder] = { file: {} };
+
+                        containerFiles[folder].file = {
+                            contents: strFromU8(zip[path])
+                        };
+                    }
+                }
+                this.containerfiles = containerFiles;
+            } catch {
+                throw new Error("error while getting data from github");
             }
         }
-        if (this.option == 'folder') {
+
+        if (this.option === 'folder' && this.containerfiles == null) {
             try {
-                return {} as FileSystemTree; 
-            } catch (error) {
-                throw new Error("Error while parsing FileList files")
+                const containerFiles: ContainerFile = {};
+
+                if (!files) throw new Error('No files provided');
+
+                for (const file of Array.from(files)) {
+                    const parts = file.webkitRelativePath ? file.webkitRelativePath.split('/') : [file.name];
+                    const folder = parts.shift() || 'root';
+
+                    if (!containerFiles[folder]) containerFiles[folder] = { file: {} };
+
+                    const content = await file.text();
+
+                    containerFiles[folder].file = { contents: content };
+                }
+
+                this.containerfiles = containerFiles;
+            } catch {
+                throw new Error('Error while parsing FileList files');
             }
         }
-        return {} as FileSystemTree; 
+        throw new Error("Wrong options | folder supported as of now");
     }
 
-    static initialize = ( input: {option : string , files? : FileList , url? : string}) => {
-        return new hostContainer(input)
+    static async initialize(input: { option: string, files?: FileList, url?: string }): Promise<hostContainer> {
+        let instance = new hostContainer(input);
+        await instance._containerFormat(input.files);
+        return instance;
     }
+
 
     getTheWorkDone = async () => {
         try {
-            await this.mount(this.containerfiles)
+            await this.mount(this.containerfiles as FileSystemTree)
             await this._installDependencies();
             await this._StartBuild();
+            this.containerfiles = null;
         } catch (error) {
-            console.error('Error in get Work Done : ' , error)            
+            console.error('Error in get Work Done : ', error)
         }
     }
 
@@ -73,7 +112,7 @@ export class hostContainer extends WebContainer {
                     write: (data) => {
                         this.logContainer.push({ work: 'install', logs: data })
                     }
-            }));
+                }));
             return installProcess.exit;
         } catch (err) {
             throw new Error('Erorr in start build : ' + err);
@@ -95,7 +134,4 @@ export class hostContainer extends WebContainer {
             throw new Error('Erorr in start build : ' + err);
         }
     }
-
-
 }
-
