@@ -8,22 +8,29 @@ interface ContainerFile {
     [name: string]: { file: { contents?: string } };
 }
 
+type Option = "github" | "folder"
 export class hostContainer extends WebContainer {
-    private containerfiles: ContainerFile | null = {};
+    private containerfiles: ContainerFile = {};
     public logContainer: LogContainer[] = [];
     public url?: string | undefined
     public option: string | undefined
 
 
-    constructor({ option, url }: { option: string, url?: string }) {
+    constructor({ option, url }: { option: Option; url?: string }) {
         super();
-        if (url) {
-            this.url = url
+
+        if (!option) {
+            throw new Error("Option is required");
         }
-        this.option = option
+
+        this.option = option;
+        if (url) {
+            this.url = url;
+        }
     }
 
-    private _containerFormat = async (files?: FileList) : Promise<Error | null> => {
+
+    private _containerFormat = async (files?: FileList): Promise<Error | null> => {
         if (this.option === "github" && this.url) {
             const axios = (await import('axios')).default;
             const { unzipSync, strFromU8 } = await import("fflate");
@@ -40,18 +47,20 @@ export class hostContainer extends WebContainer {
 
                 const zip = unzipSync(new Uint8Array(res.data));
                 const containerFiles: ContainerFile = {};
-                for (const path in zip) {
-                    if (!path.endsWith('/')) { // skip directories
+                console.log('the struxture of zip file looks like', zip);
+                for (const [path, content] of Object.entries(zip)) {
+                    if (!path.endsWith('/')) {
                         const parts = path.split('/');
                         const folder = parts.shift() || 'root';
 
                         if (!containerFiles[folder]) containerFiles[folder] = { file: {} };
 
                         containerFiles[folder].file = {
-                            contents: strFromU8(zip[path])
+                            contents: strFromU8(content)
                         };
                     }
                 }
+                console.log('container Files Github side', containerFiles);
                 this.containerfiles = containerFiles;
             } catch {
                 throw new Error("error while getting data from github");
@@ -71,7 +80,6 @@ export class hostContainer extends WebContainer {
                     if (!containerFiles[folder]) containerFiles[folder] = { file: {} };
 
                     const content = await file.text();
-
                     containerFiles[folder].file = { contents: content };
                 }
 
@@ -80,22 +88,22 @@ export class hostContainer extends WebContainer {
                 throw new Error('Error while parsing FileList files');
             }
         }
-        throw new Error("Wrong options | folder supported as of now");
+        throw new Error("Wrong options : 'github | folder' supported as of now");
     }
 
-    static async initialize(input: { option: string, files?: FileList, url?: string }): Promise<hostContainer> {
+    static async initialize(input: { option: Option, files?: FileList, url?: string }): Promise<hostContainer> {
         let instance = new hostContainer(input);
         await instance._containerFormat(input.files);
         return instance;
     }
 
 
-    getTheWorkDone = async () => {
+    public getTheWorkDone = async () => {
         try {
             await this.mount(this.containerfiles as FileSystemTree)
             await this._installDependencies();
             await this._StartBuild();
-            this.containerfiles = null;
+            this.containerfiles = {};
         } catch (error) {
             console.error('Error in get Work Done : ', error)
         }
@@ -119,9 +127,9 @@ export class hostContainer extends WebContainer {
         }
     }
 
-    private _StartBuild = async () => {
+    private _StartBuild = async (args: string[] = ['run', 'build']) => {
         try {
-            const buildProcess = await this.spawn('npm', ['run', 'build']);
+            const buildProcess = await this.spawn('npm', [...args]);
             await buildProcess.output.pipeTo(
                 new WritableStream({
                     write: (chunk) => {
