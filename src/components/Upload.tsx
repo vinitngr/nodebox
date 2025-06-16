@@ -14,11 +14,15 @@ function Upload() {
     const [projectName, setProjectName] = useState('')
     const [description, setDescription] = useState('')
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    const terminalRef = React.useRef<HTMLTextAreaElement>(null);
+    let host: hostContainer | null = null
+
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            let host;
             if (files && files.length > 0) {
                 host = await hostContainer.initialize({ option: 'folder', files });
             } else if (url.trim()) {
@@ -28,7 +32,7 @@ function Upload() {
                 alert('Please provide either a GitHub URL or a folder');
                 return;
             }
-            
+
             host.wc.on('server-ready', (port, url) => {
                 if (iframeRef.current) {
                     iframeRef.current.src = url;
@@ -43,10 +47,47 @@ function Upload() {
         }
     };
 
+    async function runContainerCommand() {
+        const value = inputRef.current?.value ?? '';
+        let [command, ...args] = value.split(' ');
+
+        if (!value || !host) return;
+
+        terminalRef.current!.value += `\n$ ${value}\n`;
+
+        if (command == 'clear') {
+            terminalRef.current!.value = '';
+            inputRef.current!.value = '';
+            return;
+        }
+
+        const output = await host.wc.spawn('sh', ['-c', value]);
+
+        function cleanOutput(text: string) {
+            return text
+                .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')  // strip ANSI
+                .replace(/[\\|\/\-]/g, '');              // remove spinner chars
+        }
+
+        output.output.pipeTo(
+            new WritableStream({
+                write(data) {
+                    if (!terminalRef.current) return
+                    const clean = cleanOutput(data);
+                    terminalRef.current.value += clean;
+                    terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+                }
+            })
+        );
+
+
+        inputRef.current!.value = '';
+        return output.exit;
+    }
 
     return (
         <>
-            <div className="grid grid-cols-1 bg-gray-200 p-5 mb-16 rounded-2xl lg:grid-cols-3 gap-12 items-start pb-12">
+            <div className="grid grid-cols-1 pb-4 relative bg-gray-200 p-5 mb-16 rounded-2xl lg:grid-cols-3 gap-12 items-start">
                 <div>
                     <h2 className="text-3xl lg:text-4xl font-light leading-tight mb-4">
                         Upload your Project Here<br />
@@ -115,19 +156,38 @@ function Upload() {
                             onChange={(e) => setDescription(e.target.value)}
                         />
                     </div>
-
                     <Button type="submit" className="bg-black text-white hover:bg-gray-800 px-8 py-3 mt-4 self-start">
                         Upload
                     </Button>
                 </form>
             </div>
-                    <iframe 
-                        className='mb-10'
-                        ref={iframeRef}
-                        width="100%"
-                        height="500"
-                        style={{ border: '1px solid #ccc' }}
-                    />
+            <div className='mb-5'>
+
+                <textarea
+                    ref={terminalRef}
+                    readOnly
+                    className="w-full h-50 bg-black text-white border border-white rounded-t px-3 py-2 overflow-y-auto resize-none"
+                />
+
+                <input
+                    ref={inputRef}
+                    type="text"
+                    className="w-full h-12 bg-black text-white border-t border-white rounded-b px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault(); // prevent newline
+                            runContainerCommand();
+                        }
+                    }}
+                />
+            </div>
+            <iframe
+                className='mb-10'
+                ref={iframeRef}
+                width="100%"
+                height="500"
+                style={{ border: '1px solid #ccc' }}
+            />
         </>
     )
 }

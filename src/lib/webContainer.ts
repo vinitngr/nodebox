@@ -19,8 +19,8 @@ export class hostContainer {
     public url?: string | undefined;
     public option: string | undefined;
     public wc!: WebContainer
-    public containerurl : any
-    public containerport : any
+    public containerurl: any
+    public containerport: any
     constructor({ option, url }: { option: Option; url?: string }) {
         if (!option) {
             throw new Error("Option is required");
@@ -139,7 +139,6 @@ export class hostContainer {
             // console.log('filteredFiles and length', filteredFiles, Object.keys(filteredFiles).length);
             await this.wc.mount(filteredFiles as FileSystemTree)
             console.log('done mounting');
-            await this.runTerminalCommand('ls');
 
             console.log('insatlling Dependencies');
             await this._installDependencies();
@@ -147,30 +146,30 @@ export class hostContainer {
 
             // await this.runTerminalCommand('ls');
 
-            // console.log('run SCRIPT');
-            // await this.runTerminalCommand('npm run start');
-            // console.log('run SCRIPT done');
+            console.log('run SCRIPT');
+            await this.runTerminalCommand('npm run start');
+            console.log('run SCRIPT done');
 
-            
-            console.log('read file');
-             const packageJSON = await this.wc.fs.readFile(
-                "package.json",
-                "utf-8",
-            );
-            console.log(packageJSON);
+
+            // console.log('read file');
+            //  const packageJSON = await this.wc.fs.readFile(
+            //     "package.json",
+            //     "utf-8",
+            // );
+            // console.log(packageJSON);
 
 
             // console.log('start Building');
             // await this._StartBuild();
             // console.log('start Building done');  
             this.wc.on('server-ready', (port, url) => {
-                console.log('server is ready to run' , url , port);
+                console.log('server is ready to run', url, port);
                 this.containerurl = url
                 this.containerport = port
             })
 
             console.log('start react server');
-            await this.runTerminalCommand('npm run dev');
+            // await this.runTerminalCommand('npm run dev');
 
             // await this.runTerminalCommand('ls')
             this.containerfiles = {};
@@ -204,9 +203,7 @@ export class hostContainer {
                     },
                     write: (data) => {
                         // @ts-ignore
-                        // const text = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
                         console.log(data);
-                        // this.logContainer.push({ work: 'install', logs: text })
                     }
                 }));
             return installProcess.exit;
@@ -222,7 +219,6 @@ export class hostContainer {
                 new WritableStream({
                     write: (data) => {
                         console.log(data);
-                        // this.logContainer.push({ work: 'build', logs: chunk.toString() });
                     },
                 }),
             );
@@ -241,7 +237,6 @@ export class hostContainer {
             new WritableStream({
                 write: (data) => {
                     console.log(data);
-                    // this.logContainer.push({ work: 'terminal', logs: data })
                 }
             }));
         return terminalOutput.exit;
