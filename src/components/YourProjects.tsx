@@ -8,6 +8,7 @@ import {
     CarouselPrevious,
 } from "@/components/ui/carousel"
 import ButtonGroup from './ui/ButtonGroup'
+import Image from 'next/image'
 function YourProjects() {
     return (
         <div className='relative'>
@@ -31,15 +32,21 @@ function YourProjects() {
                                 <div className="p-1">
                                     <div className="group cursor-pointer">
                                         <div
-                                            className="group relative aspect-[4/3] rounded-lg overflow-hidden mb-4 bg-center bg-cover"
-                                            style={{
-                                                backgroundImage: "url('https://picsum.photos/800/600')",
-                                            }}
-                                        >
+                                            className="group relative aspect-[4/3] rounded-lg overflow-hidden mb-4 bg-center bg-cover">
+                                            <Image
+                                                src="https://picsum.photos/800/600"
+                                                alt="example"
+                                                fill
+                                                className="object-cover"
+                                                sizes="(max-width: 640px) 100vw, 400px"
+                                            />
+
+
+
                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/70 transition duration-300 z-0" />
 
                                             <div className="absolute z-10 right-[50%] top-[50%] translate-x-[50%] translate-y-[-50%] hidden group-hover:flex items-center justify-center gap-2 transition duration-300">
-                                                <ButtonGroup/>
+                                                <ButtonGroup />
                                             </div>
                                         </div>
                                         <div className='flex items-center justify-between'>

@@ -17,7 +17,7 @@ export default function Home() {
   return (
     <div className="min-h-screen px-2 sm:px-6 fade-in-up font-sans">
 
-      <header className="flex items-center rounded-xl shadow  mt-2 justify-between px-6 py-4 lg:px-12">
+      <header className="flex items-center rounded-xl shadow border-2  mt-2 justify-between px-6 py-4 lg:px-12">
         <div className="flex items-center">
           <div className={` text-2xl font-normal tracking-tight`}>
             Host
@@ -44,7 +44,7 @@ export default function Home() {
           </Link>
         </nav>
 
-        <Button className="bg-black text-white hover:bg-gray-800 px-6 py-2 rounded-none">SignUp</Button>
+        <Button className="bg-black text-white hover:bg-gray-800 px-6 py-2  rounded-2xl">SignUp</Button>
       </header>
 
         {/* <div className="w-1/6 hidden lg:block"><About /></div> */}
@@ -71,7 +71,7 @@ export default function Home() {
             </div>
 
             <div className="mt-4 flex gap-8">
-              <a href="#upload-S" className="scroll-smooth bg-black/30  flex items-center rounded-full gap-2 border border-orange-400 p-3 text-white font-light text-xl hover:bg-orange-500 transition">
+              <a href="#upload-S" className="scroll-smooth  flex items-center rounded-full gap-2 border border-orange-400 p-3 text-white font-light text-xl hover:bg-orange-500 transition">
                 Click here to get started
                 <ArrowDown className="animate-bounce text-white translate-y-1" />
               </a>
@@ -94,15 +94,6 @@ export default function Home() {
               <YourProjects />
             </div>
             <div className="mt-20">
-              <div className="flex items-start mb-12">
-                <div className="text-xs text-gray-500 mr-12 mt-2">
-                  COMMUNITY
-                  WORK
-                  <br />
-                  SHOWCASE
-                </div>
-                <h2 className="text-4xl lg:text-4xl font-light">Recent Uploads</h2>
-              </div>
               <Recent />
             </div>
           </div>

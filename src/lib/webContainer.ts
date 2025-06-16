@@ -5,20 +5,23 @@ interface LogContainer {
     logs: string
 }
 interface ContainerFile {
-    [name: string]: { file: { contents?: string } };
+    [name: string]: {
+        file: {
+            contents: string | Uint8Array;
+        };
+    };
 }
 
 type Option = "github" | "folder"
-export class hostContainer extends WebContainer {
+export class hostContainer {
     private containerfiles: ContainerFile = {};
     public logContainer: LogContainer[] = [];
-    public url?: string | undefined
-    public option: string | undefined
+    public url?: string | undefined;
+    public option: string | undefined;
+    private wc!: WebContainer
 
 
     constructor({ option, url }: { option: Option; url?: string }) {
-        super();
-
         if (!option) {
             throw new Error("Option is required");
         }
@@ -30,69 +33,90 @@ export class hostContainer extends WebContainer {
     }
 
 
-    private _containerFormat = async (files?: FileList): Promise<Error | null> => {
+    private _containerFormat = async (files?: FileList): Promise<void> => {
         if (this.option === "github" && this.url) {
             const axios = (await import('axios')).default;
             const { unzipSync, strFromU8 } = await import("fflate");
             try {
+                console.log('3');
                 const match = this.url.match(
-                    /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/archive\/refs\/heads\/([^\/]+)\.zip$/
+                    /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/
                 );
-                if (!match) throw new Error("Invalid GitHub .zip URL");
+                if (!match) throw new Error("invalid input URL");
 
-                const [_, user, repo, branch] = match;
-                const zipUrl = `https://codeload.github.com/${user}/${repo}/zip/refs/heads/${branch}`;
+                const apiUrl = `/api/github-zip?user=${match[1]}&repo=${match[2]}&branch=main`;
 
-                const res = await axios.get(zipUrl, { responseType: "arraybuffer" });
+                const res = await axios.get(apiUrl, { responseType: "arraybuffer" });
 
                 const zip = unzipSync(new Uint8Array(res.data));
-                const containerFiles: ContainerFile = {};
-                console.log('the struxture of zip file looks like', zip);
+
+                console.log(zip);
+                const containerFiles: ContainerFile | any = {};
+                let folder: string = '';
+
                 for (const [path, content] of Object.entries(zip)) {
-                    if (!path.endsWith('/')) {
-                        const parts = path.split('/');
-                        const folder = parts.shift() || 'root';
+                    if (path.endsWith('/')) continue;
 
-                        if (!containerFiles[folder]) containerFiles[folder] = { file: {} };
+                    const parts = path.split('/');
+                    parts.shift(); // remove root folder
 
-                        containerFiles[folder].file = {
-                            contents: strFromU8(content)
-                        };
+                    let current = containerFiles;
+
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        const dir = parts[i];
+                        if (!current[dir]) current[dir] = { directory: {} };
+                        current = current[dir].directory;
                     }
+
+                    const fileName = parts[parts.length - 1];
+                    current[fileName] = {
+                        file: {
+                            contents: strFromU8(content),
+                        },
+                    };
                 }
-                console.log('container Files Github side', containerFiles);
+                console.log('root : ', folder);
+                console.log('container Files Github side : ', containerFiles);
                 this.containerfiles = containerFiles;
+                return;
             } catch {
                 throw new Error("error while getting data from github");
             }
         }
 
-        if (this.option === 'folder' && this.containerfiles == null) {
+        if (this.option === 'folder') {
             try {
                 const containerFiles: ContainerFile = {};
 
                 if (!files) throw new Error('No files provided');
 
                 for (const file of Array.from(files)) {
-                    const parts = file.webkitRelativePath ? file.webkitRelativePath.split('/') : [file.name];
-                    const folder = parts.shift() || 'root';
+                    const fullPath = file.webkitRelativePath || file.name;
+                    const parts = fullPath.split('/');
+                    parts.shift();
 
-                    if (!containerFiles[folder]) containerFiles[folder] = { file: {} };
-
+                    const path = parts.join('/');
                     const content = await file.text();
-                    containerFiles[folder].file = { contents: content };
+
+                    containerFiles[path] = { file: { contents: content } };
                 }
 
                 this.containerfiles = containerFiles;
+                return
             } catch {
                 throw new Error('Error while parsing FileList files');
             }
         }
+
         throw new Error("Wrong options : 'github | folder' supported as of now");
     }
 
     static async initialize(input: { option: Option, files?: FileList, url?: string }): Promise<hostContainer> {
         let instance = new hostContainer(input);
+        const wc = await WebContainer.boot();
+        instance.wc = wc;
+        //important
+        // Object.setPrototypeOf(instance, wc);
         await instance._containerFormat(input.files);
         return instance;
     }
@@ -100,25 +124,54 @@ export class hostContainer extends WebContainer {
 
     public getTheWorkDone = async () => {
         try {
-            await this.mount(this.containerfiles as FileSystemTree)
+            const filteredFiles = Object.fromEntries(
+                Object.entries(this.containerfiles).filter(([path]) =>
+                    !this.excludePatterns.some(pattern => pattern.test(path))
+                )
+            );
+
+            // console.log('filteredFiles and length', filteredFiles, Object.keys(filteredFiles).length);
+            await this.wc.mount(filteredFiles as FileSystemTree)
+            console.log('done mounting');
+            await this.runTerminalCommand('ls && cd src && ls');
+            console.log('insatlling Dependencies');
             await this._installDependencies();
-            await this._StartBuild();
-            this.containerfiles = {};
+            // console.log('object3');
+            // await this._StartBuild();
+            // console.log('object4');
+            // this.containerfiles = {};
         } catch (error) {
             console.error('Error in get Work Done : ', error)
         }
     }
 
+    excludePatterns = [
+        /^\.git/,
+        /node_modules/,
+        /^\.env/,
+        /^build\//,
+        /^dist\//,
+        /^coverage\//,
+        /^\.vscode\//,
+        /^\.idea\//,
+        /\.DS_Store$/,
+        /\.log$/,
+        /\.(svg|png|jpe?g|gif|webp|ico|bmp)$/i
+    ];
+
+
     private _installDependencies = async () => {
         try {
-            const installProcess = await this.spawn('npm', ['install']);
+            const installProcess = await this.wc.spawn('npm', ['install']);
             installProcess.output.pipeTo(
                 new WritableStream({
                     start() {
                         console.log('class affiliated : this.constructor.name : ', this.constructor.name);
                     },
                     write: (data) => {
-                        this.logContainer.push({ work: 'install', logs: data })
+                        // @ts-ignore
+                        const text = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
+                        this.logContainer.push({ work: 'install', logs: text })
                     }
                 }));
             return installProcess.exit;
@@ -129,7 +182,7 @@ export class hostContainer extends WebContainer {
 
     private _StartBuild = async (args: string[] = ['run', 'build']) => {
         try {
-            const buildProcess = await this.spawn('npm', [...args]);
+            const buildProcess = await this.wc.spawn('npm', [...args]);
             await buildProcess.output.pipeTo(
                 new WritableStream({
                     write: (chunk) => {
@@ -141,5 +194,20 @@ export class hostContainer extends WebContainer {
         } catch (err) {
             throw new Error('Erorr in start build : ' + err);
         }
+    }
+
+    public runTerminalCommand = async (input: string) => {
+        const parts = input.trim().split(' ');
+        if (parts.length === 0 || parts[0] === '') return;
+        let [command, ...arg]: [string, ...string[]] = parts as [string, ...string[]];
+        let terminalOutput = await this.wc.spawn(command, [...arg])
+        terminalOutput.output.pipeTo(
+            new WritableStream({
+                write: (data) => {
+                    console.log(data);
+                    this.logContainer.push({ work: 'terminal', logs: data })
+                }
+            }));
+        return terminalOutput.exit;
     }
 }

@@ -1,10 +1,37 @@
+'use client'
+import { useRef, useState } from 'react'
 import React from 'react'
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { hostContainer } from '@/lib/webContainer'
 function Upload() {
+    const folderRef = useRef<HTMLInputElement>(null)
+    const [url, setUrl] = useState('')
+    const [files, setFiles] = useState<FileList | null>(null)
+    const [projectName, setProjectName] = useState('')
+    const [description, setDescription] = useState('')
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        try {
+            if (files && files.length > 0) {
+                const host = await hostContainer.initialize({ option : 'folder' , files });
+                await host.getTheWorkDone()
+            } else if (url.trim()) {
+                const host = await hostContainer.initialize({ option : 'github' , url });
+                await host.getTheWorkDone()
+            } else {
+                alert('Please provide either a GitHub URL or a folder')
+            }
+        } catch (error) {
+            console.log("Error:", error)            
+        }
+    }
+
+
     return (
         <>
             <div className="grid grid-cols-1 bg-gray-200 p-5 mb-16 rounded-2xl lg:grid-cols-3 gap-12 items-start pb-12">
@@ -13,54 +40,74 @@ function Upload() {
                         Upload your Project Here<br />
                         <span className="text-gray-400">easy upload</span>
                     </h2>
-
-                    {/* <div className='w-full min-h-36 p-2'
-                     style={{ border : '2px dashed yellow' , borderSpacing: '100px' }}>
-                    Error display</div> */}
                 </div>
-                <div className="space-y-6 col-span-2">
+                <form onSubmit={handleSubmit} className="space-y-6 col-span-2">
                     <p className="text-sm leading-relaxed text-gray-700">
-                        Upload valid github url or project folder to host your React.js web app. <br />
-                        <span className="text-yellow-500">Note:</span> Make sure your project is a React.js app and has a valid build script in package.json.
+                        Upload valid GitHub URL or project folder to host your React.js web app.
                         <br />
+                        <span className="text-yellow-500">Note:</span> Make sure your project is a React.js app and has a valid build script in <code>package.json</code>.
                     </p>
 
-
                     <Separator className="my-4" />
-                    
+
                     <div className="grid flex-1 items-center gap-3">
-                        <Label htmlFor="picture">Project Name</Label>
-                        <Input id="picture" type="text" placeholder='Project Name' maxLength={20} />
+                        <Label htmlFor="projectName">Project Name</Label>
+                        <Input
+                            id="projectName"
+                            type="text"
+                            placeholder="Project Name"
+                            maxLength={20}
+                            value={projectName}
+                            onChange={(e) => setProjectName(e.target.value)}
+                        />
                     </div>
-                    
+
                     <Separator className="my-4" />
 
-
-                    <div id='forInput' className='flex gap-5 items-center  justify-center'>
+                    <div id="forInput" className="flex gap-5 items-center justify-center">
                         <div className="grid flex-1 items-center gap-3">
-                            <Label htmlFor="picture">GitHub Url</Label>
-                            <Input id="picture" placeholder='Git URL' type="url" />
+                            <Label htmlFor="githubUrl">GitHub URL</Label>
+                            <Input
+                                id="githubUrl"
+                                placeholder="Git URL"
+                                type="url"
+                                value={url}
+                                onChange={(e) => setUrl(e.target.value)}
+                            />
                         </div>
-                        Or
-                        {/* <div className="flex items-center my-1">
-                            <div className="flex-grow border-t border-gray-300" />
-                            <span className="mx-4 text-sm text-muted-foreground">OR</span>
-                            <div className="flex-grow border-t border-gray-300" />
-                        </div> */}
+                        <span>Or</span>
                         <div className="grid flex-1 items-center gap-3">
                             <Label htmlFor="filefolder">Project Folder</Label>
-                            <Input id="filefolder" type="file" multiple  //not working only 
+                            <input
+                                id="filefolder"
+                                type="file"
+                                multiple
+                                ref={folderRef}
+                                onChange={(e) => setFiles(e.target.files)}
+                                // @ts-ignore
+                                webkitdirectory="true"
+                                className="border rounded px-3 py-2"
                             />
                         </div>
                     </div>
 
-                    <Separator className='my-4'/>
+                    <Separator className="my-4" />
+
                     <div className="grid flex-1 items-center gap-3">
-                        <Label htmlFor="picture">Discription</Label>
-                        <Textarea placeholder='Add discription About project' id="description" className='h-20 max-h-28'/>
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                            id="description"
+                            placeholder="Add description about project"
+                            className="h-20 max-h-28"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                        />
                     </div>
-                    <Button className="bg-black text-white hover:bg-gray-800 px-8 py-3 mt-4 self-start">Upload</Button>
-                </div>
+
+                    <Button type="submit" className="bg-black text-white hover:bg-gray-800 px-8 py-3 mt-4 self-start">
+                        Upload
+                    </Button>
+                </form>
             </div>
         </>
     )
