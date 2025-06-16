@@ -1,9 +1,9 @@
 import { FileSystemTree, WebContainer } from "@webcontainer/api";
 
-interface LogContainer {
-    work: string,
-    logs: string
-}
+// interface LogContainer {
+//     work: string,
+//     logs: string
+// }
 interface ContainerFile {
     [name: string]: {
         file: {
@@ -15,12 +15,12 @@ interface ContainerFile {
 type Option = "github" | "folder"
 export class hostContainer {
     private containerfiles: ContainerFile = {};
-    public logContainer: LogContainer[] = [];
+    // public logContainer: LogContainer[] = [];
     public url?: string | undefined;
     public option: string | undefined;
-    private wc!: WebContainer
-
-
+    public wc!: WebContainer
+    public containerurl : any
+    public containerport : any
     constructor({ option, url }: { option: Option; url?: string }) {
         if (!option) {
             throw new Error("Option is required");
@@ -113,6 +113,7 @@ export class hostContainer {
 
     static async initialize(input: { option: Option, files?: FileList, url?: string }): Promise<hostContainer> {
         let instance = new hostContainer(input);
+
         const wc = await WebContainer.boot();
         instance.wc = wc;
         //important
@@ -124,6 +125,11 @@ export class hostContainer {
 
     public getTheWorkDone = async () => {
         try {
+            // this.wc.on('server-ready', (port, url) => {
+            //         alert(`port , url : ${port} , ${url}`);
+            //             this.containerurl = url
+            //             this.containerport = port
+            //     });
             const filteredFiles = Object.fromEntries(
                 Object.entries(this.containerfiles).filter(([path]) =>
                     !this.excludePatterns.some(pattern => pattern.test(path))
@@ -133,13 +139,41 @@ export class hostContainer {
             // console.log('filteredFiles and length', filteredFiles, Object.keys(filteredFiles).length);
             await this.wc.mount(filteredFiles as FileSystemTree)
             console.log('done mounting');
-            await this.runTerminalCommand('ls && cd src && ls');
+            await this.runTerminalCommand('ls');
+
             console.log('insatlling Dependencies');
             await this._installDependencies();
-            // console.log('object3');
+            console.log('insatlling Dependencies done');
+
+            // await this.runTerminalCommand('ls');
+
+            // console.log('run SCRIPT');
+            // await this.runTerminalCommand('npm run start');
+            // console.log('run SCRIPT done');
+
+            
+            console.log('read file');
+             const packageJSON = await this.wc.fs.readFile(
+                "package.json",
+                "utf-8",
+            );
+            console.log(packageJSON);
+
+
+            // console.log('start Building');
             // await this._StartBuild();
-            // console.log('object4');
-            // this.containerfiles = {};
+            // console.log('start Building done');  
+            this.wc.on('server-ready', (port, url) => {
+                console.log('server is ready to run' , url , port);
+                this.containerurl = url
+                this.containerport = port
+            })
+
+            console.log('start react server');
+            await this.runTerminalCommand('npm run dev');
+
+            // await this.runTerminalCommand('ls')
+            this.containerfiles = {};
         } catch (error) {
             console.error('Error in get Work Done : ', error)
         }
@@ -156,7 +190,7 @@ export class hostContainer {
         /^\.idea\//,
         /\.DS_Store$/,
         /\.log$/,
-        /\.(svg|png|jpe?g|gif|webp|ico|bmp)$/i
+        // /\.(svg|png|jpe?g|gif|webp|ico|bmp)$/i
     ];
 
 
@@ -170,8 +204,9 @@ export class hostContainer {
                     },
                     write: (data) => {
                         // @ts-ignore
-                        const text = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
-                        this.logContainer.push({ work: 'install', logs: text })
+                        // const text = data instanceof Uint8Array ? new TextDecoder().decode(data) : data;
+                        console.log(data);
+                        // this.logContainer.push({ work: 'install', logs: text })
                     }
                 }));
             return installProcess.exit;
@@ -185,8 +220,9 @@ export class hostContainer {
             const buildProcess = await this.wc.spawn('npm', [...args]);
             await buildProcess.output.pipeTo(
                 new WritableStream({
-                    write: (chunk) => {
-                        this.logContainer.push({ work: 'build', logs: chunk.toString() });
+                    write: (data) => {
+                        console.log(data);
+                        // this.logContainer.push({ work: 'build', logs: chunk.toString() });
                     },
                 }),
             );
@@ -205,7 +241,7 @@ export class hostContainer {
             new WritableStream({
                 write: (data) => {
                     console.log(data);
-                    this.logContainer.push({ work: 'terminal', logs: data })
+                    // this.logContainer.push({ work: 'terminal', logs: data })
                 }
             }));
         return terminalOutput.exit;

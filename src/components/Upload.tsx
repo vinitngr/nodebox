@@ -13,23 +13,35 @@ function Upload() {
     const [files, setFiles] = useState<FileList | null>(null)
     const [projectName, setProjectName] = useState('')
     const [description, setDescription] = useState('')
+    const iframeRef = useRef<HTMLIFrameElement>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
         try {
+            let host;
             if (files && files.length > 0) {
-                const host = await hostContainer.initialize({ option : 'folder' , files });
-                await host.getTheWorkDone()
+                host = await hostContainer.initialize({ option: 'folder', files });
             } else if (url.trim()) {
-                const host = await hostContainer.initialize({ option : 'github' , url });
-                await host.getTheWorkDone()
+                console.time('hostContainer');
+                host = await hostContainer.initialize({ option: 'github', url });
             } else {
-                alert('Please provide either a GitHub URL or a folder')
+                alert('Please provide either a GitHub URL or a folder');
+                return;
             }
+            
+            host.wc.on('server-ready', (port, url) => {
+                if (iframeRef.current) {
+                    iframeRef.current.src = url;
+                    console.timeEnd('hostContainer');
+                }
+            });
+
+            await host.getTheWorkDone();
+
         } catch (error) {
-            console.log("Error:", error)            
+            console.log("Error:", error);
         }
-    }
+    };
 
 
     return (
@@ -109,6 +121,13 @@ function Upload() {
                     </Button>
                 </form>
             </div>
+                    <iframe 
+                        className='mb-10'
+                        ref={iframeRef}
+                        width="100%"
+                        height="500"
+                        style={{ border: '1px solid #ccc' }}
+                    />
         </>
     )
 }
