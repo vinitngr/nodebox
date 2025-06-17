@@ -1,5 +1,5 @@
-import { FileSystemTree, WebContainer } from "@webcontainer/api";
-
+import { ExportOptions, FileSystemTree, WebContainer } from "@webcontainer/api";
+import { useLogStore } from "@/store/logs";
 // interface LogContainer {
 //     work: string,
 //     logs: string
@@ -21,6 +21,7 @@ export class hostContainer {
     public wc!: WebContainer
     public containerurl: any
     public containerport: any
+    public root: any
     constructor({ option, url }: { option: Option; url?: string }) {
         if (!option) {
             throw new Error("Option is required");
@@ -32,34 +33,53 @@ export class hostContainer {
         }
     }
 
-
     private _containerFormat = async (files?: FileList): Promise<void> => {
+        useLogStore.getState().addLog('normal', 'Converting files to container format...');
         if (this.option === "github" && this.url) {
             const axios = (await import('axios')).default;
             const { unzipSync, strFromU8 } = await import("fflate");
+
             try {
-                console.log('3');
                 const match = this.url.match(
                     /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/
                 );
-                if (!match) throw new Error("invalid input URL");
+                if (!match) {
+                    useLogStore.getState().addLog('error', 'Invalid GitHub URL format');
+                    throw new Error("invalid input URL");
+                }
 
                 const apiUrl = `/api/github-zip?user=${match[1]}&repo=${match[2]}&branch=main`;
+                let res: any;
 
-                const res = await axios.get(apiUrl, { responseType: "arraybuffer" });
+                try {
+                    useLogStore.getState().addLog('normal', 'Getting data from GitHub...');
+                    res = await axios.get(apiUrl, { responseType: "arraybuffer" });
+                    useLogStore.getState().addLog('normal', 'GitHub ZIP fetched successfully');
+                } catch (error) {
+                    useLogStore.getState().addLog('error', 'Failed to fetch GitHub ZIP');
+                    // console.error('GitHub fetch error:', error);
+                    throw new Error("error while getting data from github");
+                }
 
-                const zip = unzipSync(new Uint8Array(res.data));
+                let zip;
+                try {
+                    zip = unzipSync(new Uint8Array(res.data));
+                    useLogStore.getState().addLog('normal', 'ZIP file unzipped successfully');
+                } catch (zipErr) {
+                    useLogStore.getState().addLog('error', 'Failed to unzip GitHub ZIP');
+                    // console.error('Unzip error:', zipErr);
+                    throw new Error("Failed to unzip GitHub ZIP");
+                }
 
-                console.log(zip);
                 const containerFiles: ContainerFile | any = {};
-                let folder: string = '';
+                // let folder: string = '';
 
                 for (const [path, content] of Object.entries(zip)) {
                     if (path.endsWith('/')) continue;
 
                     const parts = path.split('/');
-                    parts.shift(); // remove root folder
-
+                    const root = parts.shift();
+                    this.root = root;
                     let current = containerFiles;
 
                     for (let i = 0; i < parts.length - 1; i++) {
@@ -75,11 +95,16 @@ export class hostContainer {
                         },
                     };
                 }
-                console.log('root : ', folder);
-                console.log('container Files Github side : ', containerFiles);
+
+                // console.log('root:', folder);
+                // console.log('container Files (GitHub side):', containerFiles);
                 this.containerfiles = containerFiles;
+                useLogStore.getState().addLog('normal', 'GitHub repo extracted and processed');
                 return;
-            } catch {
+
+            } catch (err) {
+                useLogStore.getState().addLog('error', 'Unhandled error while processing GitHub project');
+                // console.error('Unhandled GitHub processing error:', err);
                 throw new Error("error while getting data from github");
             }
         }
@@ -108,75 +133,106 @@ export class hostContainer {
             }
         }
 
+        useLogStore.getState().addLog('error', 'Wrong options : only "github | folder" supported as of now');
         throw new Error("Wrong options : 'github | folder' supported as of now");
     }
 
     static async initialize(input: { option: Option, files?: FileList, url?: string }): Promise<hostContainer> {
+        useLogStore.getState().addLog('normal', 'initialized project')
         let instance = new hostContainer(input);
-
-        const wc = await WebContainer.boot();
-        instance.wc = wc;
+        try {
+            useLogStore.getState().addLog('normal', 'booting the container project')
+            const wc = await WebContainer.boot();
+            instance.wc = wc;
+        } catch (error) {
+            useLogStore.getState().addLog('error', 'Error while booting the container')
+            throw new Error('Error while booting the container');
+        }
         //important
         // Object.setPrototypeOf(instance, wc);
         await instance._containerFormat(input.files);
         return instance;
     }
 
-
     public getTheWorkDone = async () => {
         try {
-            // this.wc.on('server-ready', (port, url) => {
-            //         alert(`port , url : ${port} , ${url}`);
-            //             this.containerurl = url
-            //             this.containerport = port
-            //     });
             const filteredFiles = Object.fromEntries(
                 Object.entries(this.containerfiles).filter(([path]) =>
                     !this.excludePatterns.some(pattern => pattern.test(path))
                 )
             );
+            console.log('=======================================================>\n');
 
-            // console.log('filteredFiles and length', filteredFiles, Object.keys(filteredFiles).length);
-            await this.wc.mount(filteredFiles as FileSystemTree)
-            console.log('done mounting');
+            try {
+                console.log('start mounting');
+                useLogStore.getState().addLog('normal', 'mounting started')
+                await this.wc.mount(filteredFiles as FileSystemTree)
+                console.log('done mounting');
+                useLogStore.getState().addLog('normal', 'mounting done')
+            } catch (error) {
+                useLogStore.getState().addLog('error', 'Error while mounting')
+                throw new Error('Error while mounting');
+            }
 
-            console.log('insatlling Dependencies');
-            await this._installDependencies();
-            console.log('insatlling Dependencies done');
+            console.log('=======================================================>\n');
 
-            // await this.runTerminalCommand('ls');
-
-            console.log('run SCRIPT');
-            await this.runTerminalCommand('npm run start');
-            console.log('run SCRIPT done');
-
-
-            // console.log('read file');
-            //  const packageJSON = await this.wc.fs.readFile(
-            //     "package.json",
-            //     "utf-8",
-            // );
-            // console.log(packageJSON);
+            try {
+                useLogStore.getState().addLog('normal', 'installing Dependencies')
+                console.log('\x1b[32m%s\x1b[0m', 'installing Dependencies');
+                await this._installDependencies();
+                useLogStore.getState().addLog('normal', 'installing Dependencies done')
+                console.log('insatlling Dependencies done');
+            } catch (error) {
+                useLogStore.getState().addLog('error', 'Error while installing dependencies')
+                throw new Error('Error while installing dependencies');
+            }
 
 
-            // console.log('start Building');
+
+            console.log('=======================================================>\n');
+
+            // console.log('start building');
             // await this._StartBuild();
-            // console.log('start Building done');  
+            // console.log('done start building');
+
+            console.log('\x1b[42m\x1b[30m%s\x1b[0m', ' <---- surver is ready bro ---->  ');
+
             this.wc.on('server-ready', (port, url) => {
+                useLogStore.getState().addLog('normal', 'server is running successfully')
                 console.log('server is ready to run', url, port);
                 this.containerurl = url
                 this.containerport = port
+                this.containerfiles = {};
             })
 
-            console.log('start react server');
-            // await this.runTerminalCommand('npm run dev');
+            console.log('=======================================================>\n');
 
-            // await this.runTerminalCommand('ls')
-            this.containerfiles = {};
+            console.log('\x1b[32m%s\x1b[0m', 'started running the container');
+            console.log('run start script');
+            useLogStore.getState().addLog('normal', 'run start script')
+            const code = await this.runTerminalCommand('npm run start');
+            if (code === 1) {
+                useLogStore.getState().addLog('warn', 'start script failed fallback to dev script')
+                console.log('run start script failed');
+                console.log('run fallback dev script');
+                await this.runTerminalCommand('npm run dev');
+                if (code === 1) {
+                    useLogStore.getState().addLog('error', 'faild running dev script')
+                    throw new Error('faild running dev script');
+                }
+            }
+
         } catch (error) {
-            console.error('Error in get Work Done : ', error)
+            console.warn('Error in get Work Done : ', error)
         }
     }
+
+    public cleanOutput(text: string) {
+        return text
+            .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '')
+            .replace(/[\\|\/\-]/g, '');
+    }
+
 
     excludePatterns = [
         /^\.git/,
@@ -203,7 +259,7 @@ export class hostContainer {
                     },
                     write: (data) => {
                         // @ts-ignore
-                        console.log(data);
+                        console.log(this.cleanOutput(data));
                     }
                 }));
             return installProcess.exit;
@@ -228,17 +284,54 @@ export class hostContainer {
         }
     }
 
+    public exportFile = async (
+        whatTo: string = 'dist',
+        format: ExportOptions['format'] = 'zip'
+    ) => {
+        try {
+            const data = await this.wc.export(whatTo, { format });
+            const blob =
+                format === 'json'
+                    ? new Blob([JSON.stringify(data)], { type: 'application/json' })
+                    : new Blob([data]);
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${this.root}.${format === 'zip' ? 'zip' : 'json'}`;
+            link.click();
+            URL.revokeObjectURL(url);
+            useLogStore.getState().addLog('normal', `Exported file: ${this.root}.${format}`);
+        } catch (error) {
+            useLogStore.getState().addLog('error', `Failed to export file: ${error instanceof Error ? error.message : error}`);
+            throw error;
+        }
+    };
+
+
     public runTerminalCommand = async (input: string) => {
-        const parts = input.trim().split(' ');
-        if (parts.length === 0 || parts[0] === '') return;
-        let [command, ...arg]: [string, ...string[]] = parts as [string, ...string[]];
-        let terminalOutput = await this.wc.spawn(command, [...arg])
-        terminalOutput.output.pipeTo(
-            new WritableStream({
-                write: (data) => {
-                    console.log(data);
-                }
-            }));
-        return terminalOutput.exit;
+        useLogStore.getState().addLog('normal', `Running command: ${input}`)
+        try {
+            const parts = input.trim().split(' ');
+            if (parts.length === 0 || parts[0] === '') return;
+            let [command, ...arg]: [string, ...string[]] = parts as [string, ...string[]];
+            let terminalOutput = await this.wc.spawn(command, [...arg])
+            terminalOutput.output.pipeTo(
+                new WritableStream({
+                    write: (data) => {
+                        console.log(data);
+                    }
+                }));
+            let output = await terminalOutput.exit;
+            if( output == 1 ){
+                useLogStore.getState().addLog('error', `error running terminal command`)
+            } else {
+                useLogStore.getState().addLog('normal', `terminal command successfull`)
+            }
+            return await terminalOutput.exit;
+        } catch (error) {
+            useLogStore.getState().addLog('error', `run terminal internal error`)
+            throw (error as Error).message
+        }
     }
 }
