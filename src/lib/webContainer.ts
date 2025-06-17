@@ -72,7 +72,6 @@ export class hostContainer {
                 }
 
                 const containerFiles: ContainerFile | any = {};
-                // let folder: string = '';
 
                 for (const [path, content] of Object.entries(zip)) {
                     if (path.endsWith('/')) continue;
@@ -95,9 +94,6 @@ export class hostContainer {
                         },
                     };
                 }
-
-                // console.log('root:', folder);
-                // console.log('container Files (GitHub side):', containerFiles);
                 this.containerfiles = containerFiles;
                 useLogStore.getState().addLog('normal', 'GitHub repo extracted and processed');
                 return;
@@ -108,26 +104,36 @@ export class hostContainer {
                 throw new Error("error while getting data from github");
             }
         }
-
         if (this.option === 'folder') {
             try {
-                const containerFiles: ContainerFile = {};
-
+                const containerFiles: ContainerFile | any = {};
                 if (!files) throw new Error('No files provided');
+
+
+                const isExcluded = (path: string) =>
+                    this.excludePatterns.some(pattern => pattern.test(path));
 
                 for (const file of Array.from(files)) {
                     const fullPath = file.webkitRelativePath || file.name;
+                    if (isExcluded(fullPath)) continue;
+
                     const parts = fullPath.split('/');
                     parts.shift();
 
-                    const path = parts.join('/');
-                    const content = await file.text();
+                    let current = containerFiles;
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        const dir = parts[i];
+                        if (!current[dir]) current[dir] = { directory: {} };
+                        current = current[dir].directory;
+                    }
 
-                    containerFiles[path] = { file: { contents: content } };
+                    const fileName = parts[parts.length - 1];
+                    const content = await file.text();
+                    current[fileName] = { file: { contents: content } };
                 }
 
                 this.containerfiles = containerFiles;
-                return
+                return;
             } catch {
                 throw new Error('Error while parsing FileList files');
             }
@@ -149,7 +155,7 @@ export class hostContainer {
             throw new Error('Error while booting the container');
         }
         //important
-        // Object.setPrototypeOf(instance, wc);
+        // Object.setPrototypeOf(instance, wc);  instance wil get property of wc
         await instance._containerFormat(input.files);
         return instance;
     }
@@ -323,7 +329,7 @@ export class hostContainer {
                     }
                 }));
             let output = await terminalOutput.exit;
-            if( output == 1 ){
+            if (output == 1) {
                 useLogStore.getState().addLog('error', `error running terminal command`)
             } else {
                 useLogStore.getState().addLog('normal', `terminal command successfull`)
