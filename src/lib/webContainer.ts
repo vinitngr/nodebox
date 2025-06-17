@@ -100,27 +100,29 @@ export class hostContainer {
                 if (!files) throw new Error('No files provided');
 
 
-                const isExcluded = (path: string) =>
-                    this.excludePatterns.some(pattern => pattern.test(path));
-
+                const isExcluded = (path: string) => {
+                    return this.excludePatterns.some(pattern => pattern.test(path));
+                }
+                useLogStore.getState().addLog('normal', 'Parsing files...');
                 for (const file of Array.from(files)) {
                     const fullPath = file.webkitRelativePath || file.name;
                     if (isExcluded(fullPath)) continue;
-
                     const parts = fullPath.split('/');
-                    parts.shift();
 
+                    const root =parts.shift();
+                    this.root = root
                     let current = containerFiles;
                     for (let i = 0; i < parts.length - 1; i++) {
                         const dir = parts[i];
                         if (!current[dir]) current[dir] = { directory: {} };
                         current = current[dir].directory;
                     }
-
+                    
                     const fileName = parts[parts.length - 1];
                     const content = await file.text();
                     current[fileName] = { file: { contents: content } };
                 }
+                useLogStore.getState().addLog('normal', `Root file is: ${this.root}`);
 
                 this.containerfiles = containerFiles;
                 return;
@@ -288,7 +290,6 @@ export class hostContainer {
                 format === 'json'
                     ? new Blob([JSON.stringify(data)], { type: 'application/json' })
                     : new Blob([data]);
-
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
