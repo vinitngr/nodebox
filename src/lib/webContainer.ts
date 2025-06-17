@@ -1,27 +1,17 @@
 import { ExportOptions, FileSystemTree, WebContainer } from "@webcontainer/api";
 import { useLogStore } from "@/store/logs";
-// interface LogContainer {
-//     work: string,
-//     logs: string
-// }
-interface ContainerFile {
-    [name: string]: {
-        file: {
-            contents: string | Uint8Array;
-        };
-    };
-}
+import { ContainerFile , Option } from "./types";
 
-type Option = "github" | "folder"
+
 export class hostContainer {
     private containerfiles: ContainerFile = {};
-    // public logContainer: LogContainer[] = [];
     public url?: string | undefined;
     public option: string | undefined;
     public wc!: WebContainer
     public containerurl: any
     public containerport: any
     public root: any
+
     constructor({ option, url }: { option: Option; url?: string }) {
         if (!option) {
             throw new Error("Option is required");
@@ -239,8 +229,7 @@ export class hostContainer {
             .replace(/[\\|\/\-]/g, '');
     }
 
-
-    excludePatterns = [
+    public excludePatterns = [
         /^\.git/,
         /node_modules/,
         /^\.env/,
@@ -253,7 +242,6 @@ export class hostContainer {
         /\.log$/,
         // /\.(svg|png|jpe?g|gif|webp|ico|bmp)$/i
     ];
-
 
     private _installDependencies = async () => {
         try {
@@ -313,7 +301,6 @@ export class hostContainer {
             throw error;
         }
     };
-
 
     public runTerminalCommand = async (input: string) => {
         useLogStore.getState().addLog('normal', `Running command: ${input}`)
