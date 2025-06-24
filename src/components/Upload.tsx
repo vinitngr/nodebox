@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { hostContainer } from '@/lib/webContainer'
 import { useLogStore } from '@/store/logs'
 import { borderColors } from '@/lib/other'
+import { cn } from '@/lib/utils'
 
 function Upload() {
     const folderRef = useRef<HTMLInputElement>(null)
     const iframeRef = useRef<HTMLIFrameElement>(null)
-    const inputRef = useRef<HTMLInputElement>(null)
+    const inputRef = useRef<HTMLTextAreaElement>(null)
     const terminalRef = useRef<HTMLTextAreaElement>(null)
     const logContainerRef = useRef<HTMLDivElement>(null)
     const [url, setUrl] = useState('');
@@ -91,7 +92,7 @@ function Upload() {
     }, [logs])
 
     return <>
-        <div className="grid grid-cols-1 h-[120vh] pb-4 relative bg-gray-200 p-5 mb-16 rounded-2xl lg:grid-cols-3 gap-12 items-start">
+        <div className="grid grid-cols-1  h-[120vh] pb-4 relative bg-gray-200 p-5 mb-16 rounded-2xl lg:grid-cols-3 gap-12 items-start">
 
             <div className="flex flex-col max-h-full overflow-y-auto">
                 <h2 className="text-3xl lg:text-4xl font-light leading-tight mb-4">Upload your Project Here<br /><span className="text-gray-400">easy upload</span></h2>
@@ -156,13 +157,12 @@ function Upload() {
                 <div className="mb-5">
                     <div className="font-bold">terminal</div>
                     <textarea ref={terminalRef} readOnly className="w-full h-50 bg-black text-white border border-white rounded-t px-3 py-2 overflow-y-auto resize-none" />
-                    <input ref={inputRef} type="text" disabled={!host} className="w-full h-12 bg-black text-white border-t border-white rounded-b px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" onKeyDown={e => { if (e.key === 'Enter' && host) { e.preventDefault(); runContainerCommand() } }} />
+                    <textarea ref={inputRef} disabled={!host} className="w-full h-12 bg-black text-white border-t border-white rounded-b px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" onKeyDown={e => { if (e.key === 'Enter' && host) { e.preventDefault(); runContainerCommand() } }} />
                 </div>
 
             </form>
         </div>
-
-        <iframe className="mb-10" src={containerUrl} ref={iframeRef} width="100%" height="500" style={{ border: '1px solid #ccc' }} />
+        <iframe className={cn('mb-10' , { 'hidden': !host })} src={containerUrl} ref={iframeRef} width="100%" height="500"  style={{ border: '1px solid #ccc' }} />
     </>
 }
 

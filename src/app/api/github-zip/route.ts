@@ -20,9 +20,10 @@ export async function GET(request: Request) {
     console.log('got');
     return new Response(response.data, {
       status: 200,
+      statusText: 'OK',
       headers: {
         'Content-Type': 'application/zip',
-      },
+      }      
     });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch zip' }, { status: 500 });

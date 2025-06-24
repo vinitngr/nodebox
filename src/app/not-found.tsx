@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SplinePointer } from "lucide-react";
+import { LoaderCircle, SplinePointer } from "lucide-react";
 
 export default function NotFound() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function NotFound() {
 
   return (
     <div className="w-full h-screen flex items-center justify-center">
-      <SplinePointer className="animate-spin" />
+      <LoaderCircle className="animate-spin" />
     </div>
   );
 }
