@@ -15,8 +15,8 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload } from "lucide-react"
 import { CodeEditor } from "./editor"
-import { useRouter } from "next/navigation"
-type DeploymentPhase = "form" | "sandbox" | "deploying" | "dashboard"
+// import { useRouter } from "next/navigation"
+type DeploymentPhase = "form" | "sandbox" | "deploying"
 
 export default function ProjectDeploy() {
   const [phase, setPhase] = useState<DeploymentPhase>("form")
@@ -37,7 +37,7 @@ export default function ProjectDeploy() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [files, setFiles] = useState<FileList | null>(null);
   const folderRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
+  // const router = useRouter()
   const availableFiles = [
     "package.json",
     "src/App.js",
@@ -54,51 +54,11 @@ export default function ProjectDeploy() {
     setPhase("sandbox")
     setLogs([])
     setSandboxReady(false)
-
-    const buildSteps = [
-      "Initializing WebContainer...",
-      "Cloning repository...",
-      "Installing dependencies...",
-      "> npm install",
-      "Dependencies installed successfully",
-      "Starting development server...",
-      "> npm run dev",
-      "Server running on port 3000",
-      "Sandbox ready! 🎉",
-    ]
-
-    buildSteps.forEach((step, index) => {
-      setTimeout(() => {
-        setLogs((prev) => [...prev, step])
-        if (index === buildSteps.length - 1) {
-          setTimeout(() => setSandboxReady(true), 10)
-        }
-      }, index * 80)
-    })
   }
 
   const deployToProduction = () => {
     setPhase("deploying")
     setLogs([])
-
-    const deploySteps = [
-      "Preparing for production deployment...",
-      "Building optimized version...",
-      "> npm run build",
-      "Build completed successfully",
-      "Uploading to CDN...",
-      "Configuring domain...",
-      "Deployment successful! 🚀",
-    ]
-
-    deploySteps.forEach((step, index) => {
-      setTimeout(() => {
-        setLogs((prev) => [...prev, step])
-        if (index === deploySteps.length - 1) {
-          router.push("/dashboard")
-        }
-      }, index * 1000)
-    })
   }
 
   const resetToForm = () => {
@@ -133,33 +93,12 @@ export default function ProjectDeploy() {
       setTerminalInput("")
       return
     }
-
+    
+    function jshTerminal(command: string) {}
     switch (trimmedCommand.toLowerCase()) {
-      case "ls":
-      case "ls -la":
-      case "ls -l":
-        setTerminalHistory((prev) => [
-          ...prev,
-          "package.json",
-          "README.md",
-          "public",
-          "src",
-          "tailwind.config.js",
-          "tsconfig.json",
-        ])
-        break
       case "clear":
         setLogs([])
         setTerminalHistory([])
-        break
-      case "pwd":
-        setTerminalHistory((prev) => [...prev, currentDirectory])
-        break
-      case "whoami":
-        setTerminalHistory((prev) => [...prev, "developer"])
-        break
-      case "date":
-        setTerminalHistory((prev) => [...prev, new Date().toString()])
         break
       case "help":
         setTerminalHistory((prev) => [
@@ -175,9 +114,10 @@ export default function ProjectDeploy() {
         ])
         break
       default:
-        setTerminalHistory((prev) => [...prev, `bash: ${trimmedCommand}: command not found`])
+        jshTerminal(trimmedCommand)
+        break
     }
-
+    
     setTerminalInput("")
   }
 
@@ -187,12 +127,9 @@ export default function ProjectDeploy() {
     }
   }
 
-
   return (
     <div className="p-4">
       <div className="max-w-7xl pt-20 mx-auto">
-        {/* Header */}
-        
 
         {phase === "form" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -205,7 +142,7 @@ export default function ProjectDeploy() {
               <p className="text-zinc-400">Deploy your React project from GitHub or upload files</p>
             </div>
 
-            <Card className="bg-zinc-900 border-zinc-800 text-white">
+            <Card className="bg-zinc-900/40 border-zinc-800 text-white">
               <CardHeader className="pb-4 border-b border-zinc-800">
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Settings className="h-5 w-5 text-zinc-400" />

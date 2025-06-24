@@ -2,16 +2,16 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Sparkles, Code2, Rocket, ChevronDown } from "lucide-react"
+import { ArrowRight, Sparkles, Rocket, Globe2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Space_Grotesk } from "next/font/google"
-import { Navigation } from "./Navigation"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600", "700"] })
 
 export default function HomePage() {
-  const scrollToForm = () => {
-    document.getElementById("deploy-section")?.scrollIntoView({ behavior: "smooth" })
+  const router = useRouter()
+  const scrollToForm = (where : string) => {
+    router.push(`/${where}`)
   }
 
   return (
@@ -48,11 +48,10 @@ export default function HomePage() {
           </p>
 
           {/* CTA Buttons */}
-          <Link
-            href="/deploy"
+          <div
           className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Button
-              onClick={scrollToForm}
+              onClick={() => scrollToForm('deploy')}
               size="lg"
               className="bg-blue-600  cursor-pointer hover:bg-blue-700 text-white px-8 py-4 text-base font-semibold"
             >
@@ -60,7 +59,16 @@ export default function HomePage() {
               Start Deploying
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
-          </Link>
+            <Button
+              onClick={() => scrollToForm('community')}
+              size="lg"
+              className="bg-pink-600  cursor-pointer hover:bg-pink-700 text-white px-8 py-4 text-base font-semibold"
+            >
+              <Globe2Icon/>
+              Explore
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+          </div>
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-xl mx-auto mb-8">
