@@ -1,8 +1,8 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +15,9 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload } from "lucide-react"
 import { CodeEditor } from "./editor"
+import { hostContainer } from "@/lib/webContainer"
+import { useLogStore } from "@/store/logs"
+import { executeCommand } from "@/lib/utils"
 // import { useRouter } from "next/navigation"
 type DeploymentPhase = "form" | "sandbox" | "deploying"
 
@@ -31,12 +34,15 @@ export default function ProjectDeploy() {
   const [envVars, setEnvVars] = useState("")
   const [terminalInput, setTerminalInput] = useState("")
   const [terminalHistory, setTerminalHistory] = useState<string[]>([])
-  const [currentDirectory, setCurrentDirectory] = useState("~/my-awesome-project")
-  const [logs, setLogs] = useState<string[]>([])
+  const terminalHistoryRef = useRef<string[]>([]);
   const [sandboxReady, setSandboxReady] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [files, setFiles] = useState<FileList | null>(null);
   const folderRef = useRef<HTMLInputElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [containerUrl, setContainerUrl] = useState<string | undefined>();
+  const [host, setHost] = useState<hostContainer | null>(null);
+  const terminalRef = useRef<HTMLDivElement>(null);
   // const router = useRouter()
   const availableFiles = [
     "package.json",
@@ -49,83 +55,68 @@ export default function ProjectDeploy() {
     "tailwind.config.js",
     "tsconfig.json",
   ]
+  const logs = useLogStore(s => s.logs)
 
-  const startSandbox = () => {
+  const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
     setPhase("sandbox")
-    setLogs([])
+    useLogStore.setState({ logs: [] });
     setSandboxReady(false)
+    e.preventDefault()
+    try {
+      let newHost
+      if (useLogStore.getState().hostOn) window.location.reload()
+      useLogStore.getState().hostOn = true;
+
+      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder', files })
+      else if (githubUrl.trim()) {
+        console.time('hostContainer')
+        newHost = await hostContainer.initialize({ option: 'github', url: githubUrl })
+      } else return alert('Please provide either a GitHub URL or a folder')
+
+      newHost.wc.on('server-ready', (port, url) => {
+        // if (iframeRef.current) {
+        console.log('hi this is ready');
+        setSandboxReady(true)
+        setContainerUrl(url)
+        setHost(newHost)
+        console.timeEnd('hostContainer')
+        // }
+      })
+      await newHost.getTheWorkDone()
+
+    } catch (error) { console.log("Error:", error) }
   }
 
   const deployToProduction = () => {
     setPhase("deploying")
-    setLogs([])
+    useLogStore.setState({ logs: [] });
   }
+
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [terminalHistory]);
 
   const resetToForm = () => {
     setPhase("form")
-    setLogs([])
+    useLogStore.setState({ logs: [] });
     setTerminalHistory([])
     setSandboxReady(false)
     setSelectedFile(null)
   }
-
-  const executeCommand = (command: string) => {
-    const trimmedCommand = command.trim()
-    if (!trimmedCommand) return
-
-    setTerminalHistory((prev) => [...prev, `${currentDirectory} $ ${trimmedCommand}`])
-
-    // Check if command starts with "edit"
-    if (trimmedCommand.toLowerCase().startsWith("edit ")) {
-      const filename = trimmedCommand.substring(5).trim()
-      const matchedFile = availableFiles.find(
-        (file) =>
-          file.toLowerCase().includes(filename.toLowerCase()) || filename.toLowerCase().includes(file.toLowerCase()),
-      )
-
-      if (matchedFile) {
-        setSelectedFile(matchedFile)
-        setTerminalHistory((prev) => [...prev, `Opening ${matchedFile} in editor...`])
-      } else {
-        setTerminalHistory((prev) => [...prev, `File not found: ${filename}`])
-        setTerminalHistory((prev) => [...prev, `Available files: ${availableFiles.join(", ")}`])
-      }
-      setTerminalInput("")
-      return
-    }
-    
-    function jshTerminal(command: string) {}
-    switch (trimmedCommand.toLowerCase()) {
-      case "clear":
-        setLogs([])
-        setTerminalHistory([])
-        break
-      case "help":
-        setTerminalHistory((prev) => [
-          ...prev,
-          "Available commands:",
-          "  ls           - list directory contents",
-          "  export <file>- clear terminal",
-          "  pwd          - print working directory",
-          "  whoami       - print current user",
-          "  date         - show current date",
-          "  edit <file>  - open file in editor",
-          "  help         - show this help message",
-        ])
-        break
-      default:
-        jshTerminal(trimmedCommand)
-        break
-    }
-    
-    setTerminalInput("")
-  }
-
   const handleTerminalKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      executeCommand(terminalInput)
+      executeCommand(
+        terminalInput,
+        host,
+        projectName,
+        setTerminalHistory,
+        terminalHistoryRef,
+        setTerminalInput
+      );
     }
-  }
+  };
 
   return (
     <div className="p-4">
@@ -135,7 +126,7 @@ export default function ProjectDeploy() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Panel - Form */}
             <div className="mb-6">
-               <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2">
                 <Zap className="h-6 w-6 text-blue-400" />
                 <h1 className="text-2xl font-bold text-white">Deploy Project</h1>
               </div>
@@ -155,7 +146,7 @@ export default function ProjectDeploy() {
                     {/* Source Type Selection */}
                     <div className="space-y-3">
                       <Label className="text-white font-medium">Import Source</Label>
-                      <Tabs value={sourceType} onValueChange={(value : any) => setSourceType(value as "github" | "folder")}>
+                      <Tabs value={sourceType} onValueChange={(value: any) => setSourceType(value as "github" | "folder")}>
                         <TabsList className="grid w-full grid-cols-2 bg-zinc-800 border-zinc-700">
                           <TabsTrigger
                             value="github"
@@ -220,29 +211,29 @@ export default function ProjectDeploy() {
 
                         <TabsContent value="folder" className="mt-4">
                           <div className="border-2 border-dashed border-zinc-700 rounded-lg p-8 text-center hover:border-zinc-600 transition-colors cursor-pointer bg-zinc-900">
-                          <input
-                            id="filefolder"
-                            type="file"
-                            multiple
-                            ref={folderRef}
-                            onChange={e => setFiles(e.target.files)}
-                            // @ts-ignore
-                            webkitdirectory="true"
-                            className="hidden"
-                          />
-                          <Upload className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
-                          <p className="text-lg font-medium mb-2 text-white">Drop your project folder here</p>
-                          <p className="text-zinc-400 text-sm">or click to browse files</p>
-                          <Button
-                            variant="outline"
-                            className="mt-4 bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 hover:text-white"
-                            onClick={() => folderRef.current?.click()}
-                          >
-                            Browse Files
-                          </Button>
-                          {files && <div className="mt-2">{files.length} files</div>}
+                            <input
+                              id="filefolder"
+                              type="file"
+                              multiple
+                              ref={folderRef}
+                              onChange={e => setFiles(e.target.files)}
+                              // @ts-ignore
+                              webkitdirectory="true"
+                              className="hidden"
+                            />
+                            <Upload className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
+                            <p className="text-lg font-medium mb-2 text-white">Drop your project folder here</p>
+                            <p className="text-zinc-400 text-sm">or click to browse files</p>
+                            <Button
+                              variant="outline"
+                              className="mt-4 bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 hover:text-white"
+                              onClick={() => folderRef.current?.click()}
+                            >
+                              Browse Files
+                            </Button>
+                            {files && <div className="mt-2">{files.length} files</div>}
 
-                        </div>
+                          </div>
 
                         </TabsContent>
                       </Tabs>
@@ -331,8 +322,10 @@ export default function ProjectDeploy() {
 
                     {/* Deploy Button */}
                     <Button
+
                       onClick={startSandbox}
                       disabled={!projectName}
+
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
                       size="lg"
                     >
@@ -370,23 +363,27 @@ export default function ProjectDeploy() {
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="h-96 bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
-                    {sandboxReady && phase === "sandbox" ? (
+                    <div className="w-full h-full relative iframe-container">
                       <iframe
-                        src="/back.mp4"
-                        className="w-full h-full"
+                        src={sandboxReady && phase === "sandbox" ? containerUrl : "about:blank"}
+                        className="w-full h-full absolute top-0 left-0"
                         title="Project Preview"
                         style={{ background: "white" }}
+                        ref={iframeRef}
                       />
-                    ) : (
-                      <div className="h-full flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
-                          <p className="text-zinc-400">
-                            {phase === "sandbox" ? "Loading sandbox..." : "Deploying to production..."}
-                          </p>
+
+                      {(!sandboxReady || phase !== "sandbox") && (
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-white z-10">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
+                            <p className="text-zinc-400">
+                              {phase === "sandbox" ? "Loading sandbox..." : "Deploying to production..."}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+
                   </div>
                 </CardContent>
               </Card>
@@ -417,16 +414,16 @@ export default function ProjectDeploy() {
                           <span className="text-zinc-600 text-xs mt-0.5">{String(index + 1).padStart(2, "0")}</span>
                           <span
                             className={
-                              log.includes("error") || log.includes("Error")
+                              log.msg.includes("error") || log.msg.includes("Error")
                                 ? "text-red-400"
-                                : log.includes("success") || log.includes("🎉") || log.includes("🚀")
+                                : log.msg.includes("success") || log.msg.includes("🎉") || log.msg.includes("🚀")
                                   ? "text-green-400"
-                                  : log.startsWith(">")
+                                  : log.msg.startsWith(">")
                                     ? "text-blue-400"
                                     : "text-zinc-300"
                             }
                           >
-                            {log}
+                            {log.msg}
                           </span>
                         </div>
                       ))}
@@ -455,15 +452,24 @@ export default function ProjectDeploy() {
                               </div>
                             </div>
                           )}
+                          <div
+                            ref={terminalRef}
+                            className="space-y-2 max-h-72 noscrollbar overflow-y-auto"
+                          >
+                            {terminalHistory
+                              .filter(entry => entry.trim().length > 0)
+                              .map((entry, index) => (
+                                <React.Fragment key={`terminal-frag-${index}`}>
+                                  <span className="text-gray-400 text-xs">{`~/${projectName}`}</span>
+                                  <pre className="text-zinc-300 mt-1 whitespace-pre-wrap break-words">{entry}</pre>
+                                  <Separator className="bg-zinc-800/70 my-3" />
+                                </React.Fragment>
+                              ))}
+                          </div>
 
-                          {terminalHistory.map((entry, index) => (
-                            <div key={`terminal-${index}`} className="text-zinc-300">
-                              {entry}
-                            </div>
-                          ))}
 
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-green-400">{currentDirectory}</span>
+                          <div className="absolute bottom-3 flex items-center gap-2 mt-2">
+                            <span className="text-green-400">{`~/${projectName}`}</span>
                             <span className="text-white">$</span>
                             <input
                               type="text"

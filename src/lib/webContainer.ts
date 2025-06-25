@@ -34,7 +34,7 @@ export class hostContainer {
                     /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/
                 );
                 if (!match) {
-                    useLogStore.getState().addLog('error', 'Invalid GitHub URL format');
+                    useLogStore.getState().addLog('error', 'error : Invalid GitHub URL format');
                     throw new Error("invalid input URL");
                 }
 
@@ -42,22 +42,19 @@ export class hostContainer {
                 let res: any;
 
                 try {
-                    useLogStore.getState().addLog('normal', 'Getting data from GitHub...');
+                    useLogStore.getState().addLog('normal', `> git clone --branch main https://github.com/${match[1]}/${match[2]}.git`);
                     res = await axios.get(apiUrl, { responseType: "arraybuffer" });
-                    useLogStore.getState().addLog('normal', 'GitHub ZIP fetched successfully');
+                    // useLogStore.getState().addLog('normal', 'GitHub ZIP fetched successfully');
                 } catch (error) {
                     useLogStore.getState().addLog('error', 'Failed to fetch GitHub ZIP');
-                    // console.error('GitHub fetch error:', error);
                     throw new Error("error while getting data from github");
                 }
 
                 let zip;
                 try {
                     zip = unzipSync(new Uint8Array(res.data));
-                    useLogStore.getState().addLog('normal', 'ZIP file unzipped successfully');
                 } catch (zipErr) {
                     useLogStore.getState().addLog('error', 'Failed to unzip GitHub ZIP');
-                    // console.error('Unzip error:', zipErr);
                     throw new Error("Failed to unzip GitHub ZIP");
                 }
 
@@ -85,11 +82,12 @@ export class hostContainer {
                     };
                 }
                 this.containerfiles = containerFiles;
-                useLogStore.getState().addLog('normal', 'GitHub repo extracted and processed');
+                useLogStore.getState().addLog('normal', 'success : GitHub repo installed and processed ');
                 return;
 
             } catch (err) {
-                useLogStore.getState().addLog('error', 'Unhandled error while processing GitHub project');
+                useLogStore.getState().addLog('error', 'add valid url https://github.com/username/repo');
+                useLogStore.getState().addLog('error', '> Reload Page and try again');
                 // console.error('Unhandled GitHub processing error:', err);
                 throw new Error("error while getting data from github");
             }
@@ -125,6 +123,7 @@ export class hostContainer {
                 useLogStore.getState().addLog('normal', `Root file is: ${this.root}`);
 
                 this.containerfiles = containerFiles;
+                useLogStore.getState().addLog('normal', 'success : Folder processed ');
                 return;
             } catch {
                 throw new Error('Error while parsing FileList files');
@@ -136,10 +135,10 @@ export class hostContainer {
     }
 
     static async initialize(input: { option: Option, files?: FileList, url?: string }): Promise<hostContainer> {
-        useLogStore.getState().addLog('normal', 'initialized project')
         let instance = new hostContainer(input);
+        useLogStore.getState().addLog('normal', 'project initialized: ')
         try {
-            useLogStore.getState().addLog('normal', 'booting the container project')
+            useLogStore.getState().addLog('normal', 'spining container...')
             const wc = await WebContainer.boot();
             instance.wc = wc;
         } catch (error) {
@@ -163,10 +162,10 @@ export class hostContainer {
 
             try {
                 console.log('start mounting');
-                useLogStore.getState().addLog('normal', 'mounting started')
+                // useLogStore.getState().addLog('normal', 'mounting started')
                 await this.wc.mount(filteredFiles as FileSystemTree)
                 console.log('done mounting');
-                useLogStore.getState().addLog('normal', 'mounting done')
+                useLogStore.getState().addLog('normal', 'files mounted')
             } catch (error) {
                 useLogStore.getState().addLog('error', 'Error while mounting')
                 throw new Error('Error while mounting');
@@ -175,10 +174,10 @@ export class hostContainer {
             console.log('=======================================================>\n');
 
             try {
-                useLogStore.getState().addLog('normal', 'installing Dependencies')
+                useLogStore.getState().addLog('normal', '> npm run install')
                 console.log('\x1b[32m%s\x1b[0m', 'installing Dependencies');
                 await this._installDependencies();
-                useLogStore.getState().addLog('normal', 'installing Dependencies done')
+                useLogStore.getState().addLog('normal', 'dependencies installed ')
                 console.log('insatlling Dependencies done');
             } catch (error) {
                 useLogStore.getState().addLog('error', 'Error while installing dependencies')
@@ -196,7 +195,7 @@ export class hostContainer {
             console.log('\x1b[42m\x1b[30m%s\x1b[0m', ' <---- surver is ready bro ---->  ');
 
             this.wc.on('server-ready', (port, url) => {
-                useLogStore.getState().addLog('normal', 'server is running successfully')
+                useLogStore.getState().addLog('normal', 'success : server is running (preview)')
                 console.log('server is ready to run', url, port);
                 this.containerurl = url
                 this.containerport = port
@@ -205,15 +204,14 @@ export class hostContainer {
 
             console.log('=======================================================>\n');
 
-            console.log('\x1b[32m%s\x1b[0m', 'started running the container');
+            console.log('started running the container');
             console.log('run start script');
-            useLogStore.getState().addLog('normal', 'run start script')
-            const code = await this.runTerminalCommand('npm run start');
+            useLogStore.getState().addLog('normal', '> npm run dev')
+            const code = await this.runTerminalCommand('npm run dev');
             if (code === 1) {
-                useLogStore.getState().addLog('warn', 'start script failed fallback to dev script')
-                console.log('run start script failed');
-                console.log('run fallback dev script');
-                await this.runTerminalCommand('npm run dev');
+                useLogStore.getState().addLog('warn', 'running start script')
+                useLogStore.getState().addLog('normal', '> npm run start')
+                await this.runTerminalCommand('npm run start');
                 if (code === 1) {
                     useLogStore.getState().addLog('error', 'faild running dev script')
                     throw new Error('faild running dev script');
@@ -304,7 +302,7 @@ export class hostContainer {
     };
 
     public runTerminalCommand = async (input: string) => {
-        useLogStore.getState().addLog('normal', `Running command: ${input}`)
+        // useLogStore.getState().addLog('normal', `Running command: ${input}`)
         try {
             const parts = input.trim().split(' ');
             if (parts.length === 0 || parts[0] === '') return;
