@@ -67,20 +67,20 @@ export default function ProjectDeploy() {
       if (useLogStore.getState().hostOn) window.location.reload()
       useLogStore.getState().hostOn = true;
 
-      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder', files })
+      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder' , projectName : projectName , files })
       else if (githubUrl.trim()) {
         console.time('hostContainer')
-        newHost = await hostContainer.initialize({ option: 'github', url: githubUrl })
+        newHost = await hostContainer.initialize({ option: 'github',  projectName : projectName ,url: githubUrl })
       } else return alert('Please provide either a GitHub URL or a folder')
 
       newHost.wc.on('server-ready', (port, url) => {
-        // if (iframeRef.current) {
-        console.log('hi this is ready');
-        setSandboxReady(true)
-        setContainerUrl(url)
-        setHost(newHost)
-        console.timeEnd('hostContainer')
-        // }
+        if (iframeRef.current) {
+          console.log('hi this is ready');
+          setSandboxReady(true)
+          setContainerUrl(url)
+          setHost(newHost)
+          console.timeEnd('hostContainer')
+        }
       })
       await newHost.getTheWorkDone()
 
@@ -121,16 +121,19 @@ export default function ProjectDeploy() {
   return (
     <div className="p-4">
       <div className="max-w-7xl pt-20 mx-auto">
-
         {phase === "form" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Panel - Form */}
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="h-6 w-6 text-blue-400" />
-                <h1 className="text-2xl font-bold text-white">Deploy Project</h1>
+                <h1 className="text-2xl font-bold text-white">
+                  Deploy Project
+                </h1>
               </div>
-              <p className="text-zinc-400">Deploy your React project from GitHub or upload files</p>
+              <p className="text-zinc-400">
+                Deploy your React project from GitHub or upload files
+              </p>
             </div>
 
             <Card className="bg-zinc-900/40 border-zinc-800 text-white">
@@ -145,8 +148,15 @@ export default function ProjectDeploy() {
                   <div className="space-y-6 pr-4">
                     {/* Source Type Selection */}
                     <div className="space-y-3">
-                      <Label className="text-white font-medium">Import Source</Label>
-                      <Tabs value={sourceType} onValueChange={(value: any) => setSourceType(value as "github" | "folder")}>
+                      <Label className="text-white font-medium">
+                        Import Source
+                      </Label>
+                      <Tabs
+                        value={sourceType}
+                        onValueChange={(value: any) =>
+                          setSourceType(value as "github" | "folder")
+                        }
+                      >
                         <TabsList className="grid w-full grid-cols-2 bg-zinc-800 border-zinc-700">
                           <TabsTrigger
                             value="github"
@@ -166,7 +176,10 @@ export default function ProjectDeploy() {
 
                         <TabsContent value="github" className="space-y-4 mt-4">
                           <div className="space-y-2 flex-1">
-                            <Label htmlFor="github-url" className="text-white font-medium">
+                            <Label
+                              htmlFor="github-url"
+                              className="text-white font-medium"
+                            >
                               Repository URL
                             </Label>
                             <Input
@@ -180,19 +193,30 @@ export default function ProjectDeploy() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-white font-medium">Branch</Label>
+                            <Label className="text-white font-medium">
+                              Branch
+                            </Label>
                             <Select value={branch} onValueChange={setBranch}>
                               <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white focus:border-blue-500 focus:ring-blue-500">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
-                                <SelectItem value="main" className="text-white hover:bg-zinc-700 focus:bg-zinc-700">
+                                <SelectItem
+                                  value="main"
+                                  className="text-white hover:bg-zinc-700 focus:bg-zinc-700"
+                                >
                                   main
                                 </SelectItem>
-                                <SelectItem value="master" className="text-white hover:bg-zinc-700 focus:bg-zinc-700">
+                                <SelectItem
+                                  value="master"
+                                  className="text-white hover:bg-zinc-700 focus:bg-zinc-700"
+                                >
                                   master
                                 </SelectItem>
-                                <SelectItem value="custom" className="text-white hover:bg-zinc-700 focus:bg-zinc-700">
+                                <SelectItem
+                                  value="custom"
+                                  className="text-white hover:bg-zinc-700 focus:bg-zinc-700"
+                                >
                                   Custom branch...
                                 </SelectItem>
                               </SelectContent>
@@ -202,7 +226,9 @@ export default function ProjectDeploy() {
                               <Input
                                 placeholder="Enter branch name"
                                 value={customBranch}
-                                onChange={(e) => setCustomBranch(e.target.value)}
+                                onChange={(e) =>
+                                  setCustomBranch(e.target.value)
+                                }
                                 className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500 mt-2"
                               />
                             )}
@@ -216,14 +242,18 @@ export default function ProjectDeploy() {
                               type="file"
                               multiple
                               ref={folderRef}
-                              onChange={e => setFiles(e.target.files)}
+                              onChange={(e) => setFiles(e.target.files)}
                               // @ts-ignore
                               webkitdirectory="true"
                               className="hidden"
                             />
                             <Upload className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
-                            <p className="text-lg font-medium mb-2 text-white">Drop your project folder here</p>
-                            <p className="text-zinc-400 text-sm">or click to browse files</p>
+                            <p className="text-lg font-medium mb-2 text-white">
+                              Drop your project folder here
+                            </p>
+                            <p className="text-zinc-400 text-sm">
+                              or click to browse files
+                            </p>
                             <Button
                               variant="outline"
                               className="mt-4 bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 hover:text-white"
@@ -231,10 +261,10 @@ export default function ProjectDeploy() {
                             >
                               Browse Files
                             </Button>
-                            {files && <div className="mt-2">{files.length} files</div>}
-
+                            {files && (
+                              <div className="mt-2">{files.length} files</div>
+                            )}
                           </div>
-
                         </TabsContent>
                       </Tabs>
                     </div>
@@ -244,20 +274,32 @@ export default function ProjectDeploy() {
                     {/* Project Details */}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="project-name" className="text-white font-medium">
+                        <Label
+                          htmlFor="project-name"
+                          className="text-white font-medium"
+                        >
                           Project Name
                         </Label>
                         <Input
                           id="project-name"
                           placeholder="my-awesome-project"
                           value={projectName}
-                          onChange={(e) => setProjectName(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (/^[a-zA-Z\s]*$/.test(val)) {
+                              setProjectName(val);
+                            }
+
+                          }}
                           className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="description" className="text-white font-medium">
+                        <Label
+                          htmlFor="description"
+                          className="text-white font-medium"
+                        >
                           Description (Optional)
                         </Label>
                         <Textarea
@@ -281,7 +323,10 @@ export default function ProjectDeploy() {
                       </h3>
 
                       <div className="space-y-2">
-                        <Label htmlFor="install-command" className="text-white font-medium">
+                        <Label
+                          htmlFor="install-command"
+                          className="text-white font-medium"
+                        >
                           Local Run Command
                         </Label>
                         <Input
@@ -293,7 +338,10 @@ export default function ProjectDeploy() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="build-command" className="text-white font-medium">
+                        <Label
+                          htmlFor="build-command"
+                          className="text-white font-medium"
+                        >
                           Build Command
                         </Label>
                         <Input
@@ -309,7 +357,9 @@ export default function ProjectDeploy() {
 
                     {/* Environment Variables */}
                     <div className="space-y-4">
-                      <h3 className="font-semibold text-white">Environment Variables</h3>
+                      <h3 className="font-semibold text-white">
+                        Environment Variables
+                      </h3>
                       <Textarea
                         placeholder="NEXT_PUBLIC_API_URL=https://api.example.com&#10;DATABASE_URL=postgresql://..."
                         value={envVars}
@@ -317,15 +367,15 @@ export default function ProjectDeploy() {
                         className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500 resize-none text-sm"
                         rows={4}
                       />
-                      <p className="text-xs text-zinc-500">One environment variable per line in KEY=value format</p>
+                      <p className="text-xs text-zinc-500">
+                        One environment variable per line in KEY=value format
+                      </p>
                     </div>
 
                     {/* Deploy Button */}
                     <Button
-
                       onClick={startSandbox}
                       disabled={!projectName}
-
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
                       size="lg"
                     >
@@ -336,7 +386,6 @@ export default function ProjectDeploy() {
                 </ScrollArea>
               </CardContent>
             </Card>
-
           </div>
         )}
 
@@ -349,7 +398,9 @@ export default function ProjectDeploy() {
                 <CardHeader className="pb-4 border-b border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Monitor className="h-5 w-5 text-zinc-400" />
-                    {phase === "sandbox" ? "Sandbox Preview" : "Production Preview"}
+                    {phase === "sandbox"
+                      ? "Sandbox Preview"
+                      : "Production Preview"}
                   </CardTitle>
                   <Badge
                     className={
@@ -358,14 +409,20 @@ export default function ProjectDeploy() {
                         : "bg-yellow-900 text-yellow-300 border-yellow-800"
                     }
                   >
-                    {sandboxReady && phase === "sandbox" ? "Ready" : "Loading..."}
+                    {sandboxReady && phase === "sandbox"
+                      ? "Ready"
+                      : "Loading..."}
                   </Badge>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="h-96 bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
                     <div className="w-full h-full relative iframe-container">
                       <iframe
-                        src={sandboxReady && phase === "sandbox" ? containerUrl : "about:blank"}
+                        src={
+                          sandboxReady && phase === "sandbox"
+                            ? containerUrl
+                            : "about:blank"
+                        }
                         className="w-full h-full absolute top-0 left-0"
                         title="Project Preview"
                         style={{ background: "white" }}
@@ -377,13 +434,14 @@ export default function ProjectDeploy() {
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
                             <p className="text-zinc-400">
-                              {phase === "sandbox" ? "Loading sandbox..." : "Deploying to production..."}
+                              {phase === "sandbox"
+                                ? "Loading sandbox..."
+                                : "Deploying to production..."}
                             </p>
                           </div>
                         </div>
                       )}
                     </div>
-
                   </div>
                 </CardContent>
               </Card>
@@ -393,7 +451,9 @@ export default function ProjectDeploy() {
                 <CardHeader className="pb-4 border-b border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Terminal className="h-5 w-5 text-zinc-400" />
-                    {sandboxReady && phase === "sandbox" ? "Terminal" : "Build Logs"}
+                    {sandboxReady && phase === "sandbox"
+                      ? "Terminal (jsh)"
+                      : "Build Logs"}
                   </CardTitle>
                   <Badge
                     className={
@@ -402,7 +462,9 @@ export default function ProjectDeploy() {
                         : "bg-yellow-900 text-yellow-300 border-yellow-800"
                     }
                   >
-                    {sandboxReady && phase === "sandbox" ? "Interactive" : "Building..."}
+                    {sandboxReady && phase === "sandbox"
+                      ? "Interactive"
+                      : "Building..."}
                   </Badge>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -410,17 +472,25 @@ export default function ProjectDeploy() {
                     <div className="p-4 text-sm space-y-1">
                       {/* Build logs */}
                       {logs.map((log, index) => (
-                        <div key={`log-${index}`} className="flex items-start gap-2">
-                          <span className="text-zinc-600 text-xs mt-0.5">{String(index + 1).padStart(2, "0")}</span>
+                        <div
+                          key={`log-${index}`}
+                          className="flex items-start gap-2"
+                        >
+                          <span className="text-zinc-600 text-xs mt-0.5">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
                           <span
                             className={
-                              log.msg.includes("error") || log.msg.includes("Error")
+                              log.msg.includes("error") ||
+                              log.msg.includes("Error")
                                 ? "text-red-400"
-                                : log.msg.includes("success") || log.msg.includes("🎉") || log.msg.includes("🚀")
-                                  ? "text-green-400"
-                                  : log.msg.startsWith(">")
-                                    ? "text-blue-400"
-                                    : "text-zinc-300"
+                                : log.msg.includes("success") ||
+                                  log.msg.includes("🎉") ||
+                                  log.msg.includes("🚀")
+                                ? "text-green-400"
+                                : log.msg.startsWith(">")
+                                ? "text-blue-400"
+                                : "text-zinc-300"
                             }
                           >
                             {log.msg}
@@ -448,7 +518,8 @@ export default function ProjectDeploy() {
                           {logs.length > 0 && (
                             <div className="border-t border-zinc-800 my-4 pt-4">
                               <div className="text-zinc-500 text-xs mb-2">
-                                Interactive Terminal (try: ls, clear, help, edit filename)
+                                Interactive Terminal (try: ls, clear, help, edit
+                                filename)
                               </div>
                             </div>
                           )}
@@ -457,20 +528,20 @@ export default function ProjectDeploy() {
                             className="space-y-2 max-h-72 noscrollbar overflow-y-auto"
                           >
                             {terminalHistory
-                              .filter(entry => entry.trim().length > 0)
+                              .filter((entry) => entry.trim().length > 0)
                               .map((entry, index) => (
                                 <React.Fragment key={`terminal-frag-${index}`}>
-                                  <span className="text-gray-400 text-xs">{`~/${projectName}`}</span>
-                                  <pre className="text-zinc-300 mt-1 whitespace-pre-wrap break-words">{entry}</pre>
+                                  <span className="text-gray-400 text-xs">{`~ $`}</span>
+                                  <pre className="text-zinc-300 mt-1 whitespace-pre-wrap break-words">
+                                    {entry}
+                                  </pre>
                                   <Separator className="bg-zinc-800/70 my-3" />
                                 </React.Fragment>
                               ))}
                           </div>
 
-
                           <div className="absolute bottom-3 flex items-center gap-2 mt-2">
-                            <span className="text-green-400">{`~/${projectName}`}</span>
-                            <span className="text-white">$</span>
+                            <span className="text-green-400">{`~ $`}</span>
                             <input
                               type="text"
                               value={terminalInput}
@@ -496,25 +567,36 @@ export default function ProjectDeploy() {
                       <CloudUpload className="h-5 w-5 text-zinc-400" />
                       Deploy to Production
                     </CardTitle>
-                    <Badge className="bg-green-900 mt-2 text-green-300 border-green-800">Deploy</Badge>
+                    <Badge className="bg-green-900 mt-2 text-green-300 border-green-800">
+                      Deploy
+                    </Badge>
                   </CardHeader>
                   <CardContent className="pt-6">
                     <div className=" flex flex-col justify-center">
                       <div className="text-center mb-6">
-                        <h3 className="text-lg font-semibold text-white mb-2">Ready to Deploy!</h3>
+                        <h3 className="text-lg font-semibold text-white mb-2">
+                          Ready to Deploy!
+                        </h3>
                         <p className="text-zinc-400 text-sm mb-4">
-                          Your project is running perfectly in the sandbox. Deploy to production to make it live for
-                          everyone.
+                          Your project is running perfectly in the sandbox.
+                          Deploy to production to make it live for everyone.
                         </p>
                         <div className="bg-zinc-800 rounded-lg p-4 mb-4">
-                          <p className="text-sm text-zinc-400 mb-1">Production URL</p>
+                          <p className="text-sm text-zinc-400 mb-1">
+                            Production URL
+                          </p>
                           <p className="text-white font-medium">
-                            https://{projectName.toLowerCase().replace(/\s+/g, "-")}.deployhub.app
+                            https://
+                            {projectName.toLowerCase().replace(/\s+/g, "-")}
+                            .deployhub.app
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-3">
-                        <Button onClick={deployToProduction} className="bg-blue-600 hover:bg-blue-700 text-white">
+                        <Button
+                          onClick={deployToProduction}
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
                           <CloudUpload className="h-4 w-4 mr-2" />
                           Deploy to Production
                         </Button>
@@ -534,7 +616,10 @@ export default function ProjectDeploy() {
               {/* Bottom Right - File Editor */}
               {sandboxReady && phase === "sandbox" && (
                 <div>
-                  <CodeEditor selectedFile={selectedFile} onFileSelect={setSelectedFile} />
+                  <CodeEditor
+                    selectedFile={selectedFile}
+                    onFileSelect={setSelectedFile}
+                  />
                 </div>
               )}
             </div>
@@ -542,5 +627,5 @@ export default function ProjectDeploy() {
         )}
       </div>
     </div>
-  )
+  );
 }
