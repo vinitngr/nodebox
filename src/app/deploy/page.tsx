@@ -18,7 +18,6 @@ import { CodeEditor } from "./editor"
 import { hostContainer } from "@/lib/webContainer"
 import { useLogStore } from "@/store/logs"
 import { executeCommand } from "@/lib/utils"
-// import { useRouter } from "next/navigation"
 type DeploymentPhase = "form" | "sandbox" | "deploying"
 
 export default function ProjectDeploy() {
@@ -43,18 +42,9 @@ export default function ProjectDeploy() {
   const [host, setHost] = useState<hostContainer | null>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const [availableFiles, setavailableFiles] = useState<string[]>([])
-  // const router = useRouter()
-  // const availableFiles = [
-  //   "package.json",
-  //   "src/App.js",
-  //   "src/App.css",
-  //   "src/index.js",
-  //   "README.md",
-  //   "public/index.html",
-  //   ".gitignore",
-  //   "tailwind.config.js",
-  //   "tsconfig.json",
-  // ]
+  const [executionTime, setexexecutionTime] = useState<number | null>(null)
+  
+
   const logs = useLogStore(s => s.logs)
 
   useEffect(() => {
@@ -69,6 +59,8 @@ export default function ProjectDeploy() {
   
 
   const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const start = performance.now();
+
     setPhase("sandbox")
     useLogStore.setState({ logs: [] });
     setSandboxReady(false)
@@ -78,10 +70,10 @@ export default function ProjectDeploy() {
       if (useLogStore.getState().hostOn) window.location.reload()
       useLogStore.getState().hostOn = true;
 
-      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder' , projectName : projectName , env : envVars , files })
+      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder' , projectName : projectName , metadata : {env : envVars , buildCommand , rundev} , files })
       else if (githubUrl.trim()) {
         console.time('hostContainer')
-        newHost = await hostContainer.initialize({ option: 'github',  projectName : projectName , url: githubUrl , env : envVars})
+        newHost = await hostContainer.initialize({ option: 'github',  projectName : projectName , url: githubUrl , metadata : {env : envVars , branch : customBranch || branch , buildCommand , rundev }})
       } else return alert('Please provide either a GitHub URL or a folder')
 
       newHost.wc.on('server-ready', (port, url) => {
@@ -90,6 +82,8 @@ export default function ProjectDeploy() {
           setSandboxReady(true)
           setContainerUrl(url)
           setHost(newHost)
+          const end = performance.now();
+          setexexecutionTime(end - start);
           console.timeEnd('hostContainer')
         }
       })
@@ -115,6 +109,7 @@ export default function ProjectDeploy() {
     setTerminalHistory([])
     setSandboxReady(false)
   }
+  
   const handleTerminalKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       executeCommand(
@@ -409,8 +404,9 @@ export default function ProjectDeploy() {
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Monitor className="h-5 w-5 text-zinc-400" />
                     {phase === "sandbox"
-                      ? "Sandbox Preview"
-                      : "Production Preview"}
+                    ? 'Sandbox Preview'
+                    : 'Production Preview'}
+
                   </CardTitle>
                   <Badge
                     className={
@@ -420,7 +416,7 @@ export default function ProjectDeploy() {
                     }
                   >
                     {sandboxReady && phase === "sandbox"
-                      ? "Ready"
+                      ? `ready ${executionTime ? ` (${Math.round(executionTime / 1000)} s)` : ''}`
                       : "Loading..."}
                   </Badge>
                 </CardHeader>
@@ -492,7 +488,7 @@ export default function ProjectDeploy() {
                           <span
                             className={
                               log.msg.includes("error") ||
-                              log.msg.includes("Error")
+                              log.msg.includes("Error") || log.msg.includes("Failed")
                                 ? "text-red-400"
                                 : log.msg.includes("success") ||
                                   log.msg.includes("🎉") ||
@@ -523,7 +519,7 @@ export default function ProjectDeploy() {
                       )}
 
                       {/* Interactive terminal when sandbox is ready */}
-                      {sandboxReady && phase === "sandbox" && (
+                      {sandboxReady  && phase === "sandbox" && (
                         <>
                           {logs.length > 0 && (
                             <div className="border-t border-zinc-800 my-4 pt-4">

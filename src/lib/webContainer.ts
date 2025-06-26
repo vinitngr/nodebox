@@ -4,9 +4,12 @@ import { ContainerFile, Option } from "./types";
 import { Axios } from "axios";
 
 interface ProjectMetaData {
-  projectName: string,
-  description?: string,
-  env?: string
+  projectName?: string;
+  description?: string;
+  env?: string;
+  branch?: string;
+  buildCommand ? : string,
+  rundev ? : string
 }
 export class hostContainer {
   private containerfiles: ContainerFile = {};
@@ -16,7 +19,7 @@ export class hostContainer {
   public containerurl: any;
   public containerport: any;
   public root: any;
-  public metadata: ProjectMetaData = { projectName: "" };
+  public metadata: ProjectMetaData = {};
 
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
@@ -30,7 +33,9 @@ export class hostContainer {
   }
 
   private _containerFormat = async (files?: FileList): Promise<void> => {
-    useLogStore.getState().addLog("normal", "Converting files to container format...");
+    useLogStore
+      .getState()
+      .addLog("normal", "Converting files to container format...");
 
     if (this.option === "github" && this.url) {
       const axios = (await import("axios")).default;
@@ -47,12 +52,18 @@ export class hostContainer {
           throw new Error("invalid input URL");
         }
 
-        const apiUrl = `/api/github-zip?user=${match[1]}&repo=${match[2]}&branch=main`;
+        const apiUrl = `/api/github-zip?user=${match[1]}&repo=${match[2]
+          }&branch=${this.metadata?.branch || "main"}`;
         let res: any;
 
         try {
-          useLogStore.getState().addLog("normal", `> git clone --branch main https://github.com/${match[1]}/${match[2]}.git`
-          );
+          useLogStore
+            .getState()
+            .addLog(
+              "normal",
+              `> git clone --branch ${this.metadata?.branch || "main"
+              } https://github.com/${match[1]}/${match[2]}.git`
+            );
           res = await axios.get(apiUrl, { responseType: "arraybuffer" });
         } catch (error) {
           useLogStore.getState().addLog("error", "Failed to fetch GitHub ZIP");
@@ -91,12 +102,16 @@ export class hostContainer {
           };
         }
         this.containerfiles = containerFiles;
-        useLogStore.getState().addLog("normal", "success : GitHub repo installed and processed ");
-        await this._addplaceholders(axios)
+        useLogStore
+          .getState()
+          .addLog("normal", "success : GitHub repo installed and processed ");
+        await this._addplaceholders(axios);
 
         return;
       } catch (err) {
-        useLogStore.getState().addLog("error", "add valid url https://github.com/username/repo");
+        useLogStore
+          .getState()
+          .addLog("error", "add valid url https://github.com/username/repo");
         useLogStore.getState().addLog("error", "> Reload Page and try again");
         // console.error('Unhandled GitHub processing error:', err);
         throw new Error("error while getting data from github");
@@ -139,7 +154,12 @@ export class hostContainer {
       }
     }
 
-    useLogStore.getState().addLog("error", 'Wrong options : only "github | folder" supported as of now');
+    useLogStore
+      .getState()
+      .addLog(
+        "error",
+        'Wrong options : only "github | folder" supported as of now'
+      );
     throw new Error("Wrong options : 'github | folder' supported as of now");
   };
 
@@ -154,11 +174,14 @@ export class hostContainer {
     projectName: string;
     files?: FileList;
     url?: string;
-    env?: string
+    metadata?: ProjectMetaData;
   }): Promise<hostContainer> {
     let instance = new hostContainer(input);
+    if (input.metadata?.env) instance.metadata.env = input.metadata.env;
+    if (input.metadata?.branch) instance.metadata.branch = input.metadata.branch;
+    if (input.metadata?.buildCommand) instance.metadata.buildCommand = input.metadata.buildCommand;
+    if (input.metadata?.rundev) instance.metadata.rundev = input.metadata.rundev;
     instance.metadata.projectName = input.projectName;
-    instance.metadata.env = input.env;
 
     useLogStore.getState().addLog("normal", "project initialized: ");
     try {
@@ -179,27 +202,76 @@ export class hostContainer {
     return instance;
   }
 
-
   private async _addplaceholders(axios: Axios) {
-    useLogStore.getState().addLog('normal', '> adding placeholder.jpg');
-    const imageRes = await axios.get('/placeholder.jpg', { responseType: 'arraybuffer' });
+    useLogStore.getState().addLog("normal", "> adding placeholder.jpg");
+    const imageRes = await axios.get("/placeholder.jpg", {
+      responseType: "arraybuffer",
+    });
+    try {
+      await this.wc.fs.readdir('./public');
+    } catch {
+      await this.wc.fs.mkdir('./public', { recursive: true });
+    }
+
     const buffer1 = new Uint8Array(imageRes.data);
-    await this.wc.fs.writeFile('placeholder.jpg', buffer1);
+    await this.wc.fs.writeFile("./public/placeholder.jpg", buffer1);
 
-    useLogStore.getState().addLog('normal', '> adding placeholder.mp4');
-    const videoRes = await axios.get('/placeholder.mp4', { responseType: 'arraybuffer' });
+    useLogStore.getState().addLog("normal", "> adding placeholder.mp4");
+    const videoRes = await axios.get("/placeholder.mp4", {
+      responseType: "arraybuffer",
+    });
     const buffer2 = new Uint8Array(videoRes.data);
-    await this.wc.fs.writeFile('placeholder.mp4', buffer2);
+    await this.wc.fs.writeFile("./public/placeholder.mp4", buffer2);
   }
-
 
   public getTheWorkDone = async () => {
     try {
+      // function replaceUrlsInTree(tree: any): any {
+      //   const replacedTree: any = {};
+
+      //   for (const [key, value] of Object.entries(tree) as [string, any][]) {
+      //     if (value.directory) {
+      //       replacedTree[key] = {
+      //         directory: replaceUrlsInTree(value.directory),
+      //       };
+      //     } else if (value.file) {
+      //       const content = value.file.contents;
+
+
+      //       const imagePattern = /(?:https?:)?\/\/[^\s"'>]+?\.(?:jpe?g|png|gif|svg|webp|bmp)(?:\?[^\s"'>]*)?|\.?\/[^\s"'>]+?\.(?:jpe?g|png|gif|svg|webp|bmp)(?:\?[^\s"'>]*)?/gi;
+      //       const videoPattern =
+      //         /(?:https?:)?\/\/[^\s"'>]+?\.(?:mp4|webm|ogg|mov|avi|mp3|wav|flac)(?:\?[^\s"'>]*)?|\.?\/[^\s"'>]+?\.(?:mp4|webm|ogg|mov|avi|mp3|wav|flac)(?:\?[^\s"'>]*)?/gi;
+
+      //       const replacedContent = content
+      //         .replace(imagePattern, "/placeholder.jpg")
+      //         .replace(videoPattern, "/placeholder.mp4");
+
+      //       replacedTree[key] = {
+      //         file: {
+      //           contents: replacedContent,
+      //         },
+      //       };
+      //     }
+      //   }
+
+      //   return replacedTree;
+      // }
+
+      // const filteredFiles = replaceUrlsInTree(
+      //   Object.fromEntries(
+      //     Object.entries(this.containerfiles).filter(
+      //       ([path]) =>
+      //         !this.excludePatterns.some((pattern) => pattern.test(path))
+      //     )
+      //   )
+      // );
+
       const filteredFiles = Object.fromEntries(
-        Object.entries(this.containerfiles).filter(([path]) =>
-          !this.excludePatterns.some(pattern => pattern.test(path))
+        Object.entries(this.containerfiles).filter(
+          ([path]) =>
+            !this.excludePatterns.some((pattern) => pattern.test(path))
         )
-      );
+      )
       console.log("=======================================================>\n");
 
       try {
@@ -216,15 +288,13 @@ export class hostContainer {
       console.log("=======================================================>\n");
 
       if (this.metadata.env) {
-        this.writeFile('.env', this.metadata.env)
+        this.writeFile(".env", this.metadata.env);
       }
 
       try {
-        useLogStore.getState().addLog("normal", "> npm run install");
-        console.log("\x1b[32m%s\x1b[0m", "installing Dependencies");
+        useLogStore.getState().addLog("normal", "> npm install");
         await this._installDependencies();
         useLogStore.getState().addLog("normal", "dependencies installed ");
-        console.log("insatlling Dependencies done");
       } catch (error) {
         useLogStore
           .getState()
@@ -239,14 +309,11 @@ export class hostContainer {
       // console.log('done start building');
 
       console.log(
-        "\x1b[42m\x1b[30m%s\x1b[0m",
         " <---- surver is ready bro ---->  "
       );
 
       this.wc.on("server-ready", (port, url) => {
-        useLogStore
-          .getState()
-          .addLog("normal", "success : server is running (preview)");
+        useLogStore.getState().addLog("normal", `success : server is running (preview) ${url} port : ${port}`);
         console.log("server is ready to run", url, port);
         this.containerurl = url;
         this.containerport = port;
@@ -257,8 +324,8 @@ export class hostContainer {
 
       console.log("started running the container");
       console.log("run start script");
-      useLogStore.getState().addLog("normal", "> npm run dev");
-      const code = await this.runTerminalCommand("npm run dev");
+      useLogStore.getState().addLog("normal", `> ${this.metadata.rundev || "npm run dev"}`);
+      const code = await this.runTerminalCommand(this.metadata.rundev || "npm run dev");
       if (code === 1) {
         useLogStore.getState().addLog("warn", "running start script");
         useLogStore.getState().addLog("normal", "> npm run start");
@@ -314,9 +381,10 @@ export class hostContainer {
     }
   };
 
-  private _StartBuild = async (args: string[] = ["run", "build"]) => {
+  private _StartBuild = async (buildScript : string) => {
     try {
-      const buildProcess = await this.wc.spawn("npm", [...args]);
+      const [command , ...args] = buildScript.split(' ')
+      const buildProcess = await this.wc.spawn(command, args);
       await buildProcess.output.pipeTo(
         new WritableStream({
           write: (data) => {
@@ -404,10 +472,7 @@ export class hostContainer {
     const shouldExclude = (name: string) =>
       this.excludePatterns.some((pattern) => pattern.test(name));
 
-    const mediaExts = [
-      "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico",
-      "mp4", "webm", "ogg", "mp3", "wav", "pdf"
-    ];
+    const mediaExts = ["png","jpg","jpeg","gif","webp","bmp","ico","mp4","webm","ogg","mp3","wav","pdf"];
 
     const isImageFile = (name: string) => {
       const ext = name.split(".").pop()?.toLowerCase() || "";
@@ -429,10 +494,9 @@ export class hostContainer {
     return files;
   }
 
-
   public readFile = async (path: string) => {
-    return await this.wc.fs.readFile(path, 'utf8');
-  }
+    return await this.wc.fs.readFile(path, "utf8");
+  };
 
   public downloadFile(filepath: string, content: string) {
     const filename = filepath.split("/").pop();
