@@ -2,6 +2,7 @@ import { ExportOptions, FileSystemTree, WebContainer } from "@webcontainer/api";
 import { useLogStore } from "@/store/logs";
 import { ContainerFile, Option } from "./types";
 import { Axios } from "axios";
+import { replaceImageSrcInJSX } from "./utils";
 
 interface ProjectMetaData {
   projectName?: string;
@@ -226,52 +227,48 @@ export class hostContainer {
 
   public getTheWorkDone = async () => {
     try {
-      // function replaceUrlsInTree(tree: any): any {
-      //   const replacedTree: any = {};
+      function replaceUrlsInTree(tree: any): any {
+        const replacedTree: any = {};
 
-      //   for (const [key, value] of Object.entries(tree) as [string, any][]) {
-      //     if (value.directory) {
-      //       replacedTree[key] = {
-      //         directory: replaceUrlsInTree(value.directory),
-      //       };
-      //     } else if (value.file) {
-      //       const content = value.file.contents;
+        for (const [key, value] of Object.entries(tree) as [string, any][]) {
+          if (value.directory) {
+            replacedTree[key] = {
+              directory: replaceUrlsInTree(value.directory),
+            };
+          } else if (value.file) {
+            const content = value.file.contents;
+            let replacedContent ;
+            if (/\.(jsx|tsx)$/i.test(key.trim()) && content) {
+              console.log('here we go again', key);
+              replacedContent = replaceImageSrcInJSX(content);
+            }
 
+            replacedTree[key] = {
+              file: {
+                contents: replacedContent || content,
+              },
+            };
+          }
+        }
 
-      //       const imagePattern = /(?:https?:)?\/\/[^\s"'>]+?\.(?:jpe?g|png|gif|svg|webp|bmp)(?:\?[^\s"'>]*)?|\.?\/[^\s"'>]+?\.(?:jpe?g|png|gif|svg|webp|bmp)(?:\?[^\s"'>]*)?/gi;
-      //       const videoPattern =
-      //         /(?:https?:)?\/\/[^\s"'>]+?\.(?:mp4|webm|ogg|mov|avi|mp3|wav|flac)(?:\?[^\s"'>]*)?|\.?\/[^\s"'>]+?\.(?:mp4|webm|ogg|mov|avi|mp3|wav|flac)(?:\?[^\s"'>]*)?/gi;
+        return replacedTree;
+      }
 
-      //       const replacedContent = content
-      //         .replace(imagePattern, "/placeholder.jpg")
-      //         .replace(videoPattern, "/placeholder.mp4");
-
-      //       replacedTree[key] = {
-      //         file: {
-      //           contents: replacedContent,
-      //         },
-      //       };
-      //     }
-      //   }
-
-      //   return replacedTree;
-      // }
-
-      // const filteredFiles = replaceUrlsInTree(
-      //   Object.fromEntries(
-      //     Object.entries(this.containerfiles).filter(
-      //       ([path]) =>
-      //         !this.excludePatterns.some((pattern) => pattern.test(path))
-      //     )
-      //   )
-      // );
-
-      const filteredFiles = Object.fromEntries(
-        Object.entries(this.containerfiles).filter(
-          ([path]) =>
-            !this.excludePatterns.some((pattern) => pattern.test(path))
+      const filteredFiles = replaceUrlsInTree(
+        Object.fromEntries(
+          Object.entries(this.containerfiles).filter(
+            ([path]) =>
+              !this.excludePatterns.some((pattern) => pattern.test(path))
+          )
         )
-      )
+      );
+
+      // const filteredFiles = Object.fromEntries(
+      //   Object.entries(this.containerfiles).filter(
+      //     ([path]) =>
+      //       !this.excludePatterns.some((pattern) => pattern.test(path))
+      //   )
+      // )
       console.log("=======================================================>\n");
 
       try {
