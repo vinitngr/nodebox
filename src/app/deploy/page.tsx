@@ -36,26 +36,37 @@ export default function ProjectDeploy() {
   const [terminalHistory, setTerminalHistory] = useState<string[]>([])
   const terminalHistoryRef = useRef<string[]>([]);
   const [sandboxReady, setSandboxReady] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [files, setFiles] = useState<FileList | null>(null);
   const folderRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [containerUrl, setContainerUrl] = useState<string | undefined>();
   const [host, setHost] = useState<hostContainer | null>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const [availableFiles, setavailableFiles] = useState<string[]>([])
   // const router = useRouter()
-  const availableFiles = [
-    "package.json",
-    "src/App.js",
-    "src/App.css",
-    "src/index.js",
-    "README.md",
-    "public/index.html",
-    ".gitignore",
-    "tailwind.config.js",
-    "tsconfig.json",
-  ]
+  // const availableFiles = [
+  //   "package.json",
+  //   "src/App.js",
+  //   "src/App.css",
+  //   "src/index.js",
+  //   "README.md",
+  //   "public/index.html",
+  //   ".gitignore",
+  //   "tailwind.config.js",
+  //   "tsconfig.json",
+  // ]
   const logs = useLogStore(s => s.logs)
+
+  useEffect(() => {
+    if(host) {
+      host.getFilesName('/').then(files => {
+        setavailableFiles(files)
+      }).catch(err => {
+        console.error("Error fetching root files:", err);
+      })
+    }
+  } , [host])
+  
 
   const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
     setPhase("sandbox")
@@ -67,10 +78,10 @@ export default function ProjectDeploy() {
       if (useLogStore.getState().hostOn) window.location.reload()
       useLogStore.getState().hostOn = true;
 
-      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder' , projectName : projectName , files })
+      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder' , projectName : projectName , env : envVars , files })
       else if (githubUrl.trim()) {
         console.time('hostContainer')
-        newHost = await hostContainer.initialize({ option: 'github',  projectName : projectName ,url: githubUrl })
+        newHost = await hostContainer.initialize({ option: 'github',  projectName : projectName , url: githubUrl , env : envVars})
       } else return alert('Please provide either a GitHub URL or a folder')
 
       newHost.wc.on('server-ready', (port, url) => {
@@ -103,7 +114,6 @@ export default function ProjectDeploy() {
     useLogStore.setState({ logs: [] });
     setTerminalHistory([])
     setSandboxReady(false)
-    setSelectedFile(null)
   }
   const handleTerminalKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -540,7 +550,7 @@ export default function ProjectDeploy() {
                               ))}
                           </div>
 
-                          <div className="absolute bottom-3 flex items-center gap-2 mt-2">
+                          <div className="absolute bottom-3 w-[90%] flex items-center gap-2 mt-2">
                             <span className="text-green-400">{`~ $`}</span>
                             <input
                               type="text"
@@ -614,11 +624,11 @@ export default function ProjectDeploy() {
               )}
 
               {/* Bottom Right - File Editor */}
-              {sandboxReady && phase === "sandbox" && (
+              {sandboxReady && phase === "sandbox" && host && (
                 <div>
                   <CodeEditor
-                    selectedFile={selectedFile}
-                    onFileSelect={setSelectedFile}
+                    files={availableFiles}
+                    host={host}
                   />
                 </div>
               )}

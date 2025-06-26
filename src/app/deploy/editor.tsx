@@ -1,43 +1,82 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { FileText, Save, Download, Copy, Check } from "lucide-react"
-import { files } from "@/data/fakeData" 
+import { hostContainer } from "@/lib/webContainer"
+// import { files } from "@/data/fakeData" 
 
 interface CodeEditorProps {
-  selectedFile: string | null
-  onFileSelect: (filename: string) => void
+  files: string[],
+  host: hostContainer
 }
 
-export function CodeEditor({ selectedFile, onFileSelect }: CodeEditorProps) {
+
+export function CodeEditor({ files, host }: CodeEditorProps) {
+  const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [currentFileContent, setCurrentFileContent] = useState<string>("")
   const [copied, setCopied] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
 
 
-  const currentFile = files.find((f) => f.name === selectedFile)
+  const SaveFunction = async () => {
+  if (selectedFile && currentFileContent) {
+    await host.writeFile(selectedFile, currentFileContent)
+    setCopied(false)
+  }
+}
 
   const copyToClipboard = async () => {
-    if (currentFile) {
-      await navigator.clipboard.writeText(currentFile.content)
+    if (selectedFile) {
+      await navigator.clipboard.writeText(currentFileContent)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
   }
 
+  const downloadFile = async () => {
+    console.log(selectedFile);
+    if (selectedFile && currentFileContent) {
+      try {
+        host.downloadFile((selectedFile as string), currentFileContent)
+      } catch (error) {
+        console.error("Error downloading file:", error)
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setCurrentFileContent("")
+      return
+    }
+    async function loadContent() {
+      if (selectedFile) {
+        const content = await host.readFile(selectedFile)
+        setCurrentFileContent(content)
+      }
+    }
+    loadContent()
+  }, [selectedFile])
+
+  const onFileSelect = (filename: string) => {
+    setSelectedFile(filename)
+  }
+
   const getLanguageColor = (language: string) => {
-    switch (language) {
-      case "javascript":
+    switch (language.split('.').pop()?.toLowerCase()) {
+      case "js":
+        return "bg-yellow-300 text-black border-yellow-800"
+      case "html":
         return "bg-yellow-900 text-yellow-300 border-yellow-800"
       case "json":
         return "bg-green-900 text-green-300 border-green-800"
       case "css":
         return "bg-blue-900 text-blue-300 border-blue-800"
-      case "markdown":
+      case "md":
         return "bg-purple-900 text-purple-300 border-purple-800"
       default:
         return "bg-zinc-900 text-zinc-300 border-zinc-800"
@@ -53,7 +92,7 @@ export function CodeEditor({ selectedFile, onFileSelect }: CodeEditorProps) {
             File Editor
           </CardTitle>
           <div className="flex items-center gap-2">
-            {currentFile && <Badge className={getLanguageColor(currentFile.language)}>{currentFile.language}</Badge>}
+            {selectedFile && <Badge className={getLanguageColor(selectedFile)}>{selectedFile.replace(/\//g, "")}</Badge>}
           </div>
         </div>
 
@@ -66,20 +105,20 @@ export function CodeEditor({ selectedFile, onFileSelect }: CodeEditorProps) {
             <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
               {files.map((file) => (
                 <SelectItem
-                  key={file.name}
-                  value={file.name}
+                  key={file}
+                  value={file}
                   className="text-white hover:bg-zinc-700 focus:bg-zinc-700"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
-                    {file.name}
+                    {file.slice(2)}
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {currentFile && (
+          {selectedFile && (
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
@@ -92,14 +131,15 @@ export function CodeEditor({ selectedFile, onFileSelect }: CodeEditorProps) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => SaveFunction()}
                 className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white"
               >
-                {isEditing ? <Save className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                <Save className="h-3 w-3" />
               </Button>
               <Button
                 size="sm"
                 variant="outline"
+                onClick={downloadFile}
                 className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white"
               >
                 <Download className="h-3 w-3" />
@@ -110,21 +150,19 @@ export function CodeEditor({ selectedFile, onFileSelect }: CodeEditorProps) {
       </CardHeader>
 
       <CardContent className="pt-6 h-full">
-        {currentFile ? (
+        {selectedFile ? (
           <ScrollArea className="h-80 bg-black rounded-lg border border-zinc-800">
             <div className="p-4">
-              {isEditing ? (
-                <textarea
-                  className="w-full h-full bg-transparent text-zinc-300 font-mono text-sm resize-none border-none outline-none"
-                  value={currentFile.content}
-                  onChange={(e) => {}}
-                  style={{ minHeight: "300px" }}
-                />
-              ) : (
-                <pre className="text-zinc-300 font-mono text-sm whitespace-pre-wrap">
-                  <code>{currentFile.content}</code>
-                </pre>
-              )}
+              <textarea
+                onChange={(e) => {
+                  const val = e.target.value
+                  setCurrentFileContent(val)
+                  SaveFunction()
+                }}
+                className="w-full h-full noscrollbar bg-transparent text-zinc-300 font-mono text-sm resize-none border-none outline-none"
+                value={currentFileContent}
+                style={{ minHeight: "300px" }}
+              />
             </div>
           </ScrollArea>
         ) : (

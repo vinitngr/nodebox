@@ -1,8 +1,13 @@
 import { ExportOptions, FileSystemTree, WebContainer } from "@webcontainer/api";
 import { useLogStore } from "@/store/logs";
-import { ContainerFile , Option } from "./types";
+import { ContainerFile, Option } from "./types";
+import { Axios } from "axios";
 
-
+interface ProjectMetaData {
+  projectName: string,
+  description?: string,
+  env?: string
+}
 export class hostContainer {
   private containerfiles: ContainerFile = {};
   public url?: string | undefined;
@@ -11,6 +16,7 @@ export class hostContainer {
   public containerurl: any;
   public containerport: any;
   public root: any;
+  public metadata: ProjectMetaData = { projectName: "" };
 
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
@@ -24,9 +30,8 @@ export class hostContainer {
   }
 
   private _containerFormat = async (files?: FileList): Promise<void> => {
-    useLogStore
-      .getState()
-      .addLog("normal", "Converting files to container format...");
+    useLogStore.getState().addLog("normal", "Converting files to container format...");
+
     if (this.option === "github" && this.url) {
       const axios = (await import("axios")).default;
       const { unzipSync, strFromU8 } = await import("fflate");
@@ -46,14 +51,9 @@ export class hostContainer {
         let res: any;
 
         try {
-          useLogStore
-            .getState()
-            .addLog(
-              "normal",
-              `> git clone --branch main https://github.com/${match[1]}/${match[2]}.git`
-            );
+          useLogStore.getState().addLog("normal", `> git clone --branch main https://github.com/${match[1]}/${match[2]}.git`
+          );
           res = await axios.get(apiUrl, { responseType: "arraybuffer" });
-          // useLogStore.getState().addLog('normal', 'GitHub ZIP fetched successfully');
         } catch (error) {
           useLogStore.getState().addLog("error", "Failed to fetch GitHub ZIP");
           throw new Error("error while getting data from github");
@@ -91,14 +91,12 @@ export class hostContainer {
           };
         }
         this.containerfiles = containerFiles;
-        useLogStore
-          .getState()
-          .addLog("normal", "success : GitHub repo installed and processed ");
+        useLogStore.getState().addLog("normal", "success : GitHub repo installed and processed ");
+        await this._addplaceholders(axios)
+
         return;
       } catch (err) {
-        useLogStore
-          .getState()
-          .addLog("error", "add valid url https://github.com/username/repo");
+        useLogStore.getState().addLog("error", "add valid url https://github.com/username/repo");
         useLogStore.getState().addLog("error", "> Reload Page and try again");
         // console.error('Unhandled GitHub processing error:', err);
         throw new Error("error while getting data from github");
@@ -141,35 +139,33 @@ export class hostContainer {
       }
     }
 
-    useLogStore
-      .getState()
-      .addLog(
-        "error",
-        'Wrong options : only "github | folder" supported as of now'
-      );
+    useLogStore.getState().addLog("error", 'Wrong options : only "github | folder" supported as of now');
     throw new Error("Wrong options : 'github | folder' supported as of now");
   };
 
-  static getSlug(input: string , join : string = '') {
-    const result = input
-      .trim()
-      .split(/\s+/)
-      .join(join);
-    
-    return result
+  static getSlug(input: string, join: string = "") {
+    const result = input.trim().split(/\s+/).join(join);
+
+    return result;
   }
-  
+
   static async initialize(input: {
     option: Option;
     projectName: string;
     files?: FileList;
     url?: string;
+    env?: string
   }): Promise<hostContainer> {
     let instance = new hostContainer(input);
+    instance.metadata.projectName = input.projectName;
+    instance.metadata.env = input.env;
+
     useLogStore.getState().addLog("normal", "project initialized: ");
     try {
       useLogStore.getState().addLog("normal", "spining container...");
-      const wc = await WebContainer.boot({ workdirName: this.getSlug(input.projectName , '') });
+      const wc = await WebContainer.boot({
+        workdirName: this.getSlug(input.projectName, ""),
+      });
       instance.wc = wc;
     } catch (error) {
       useLogStore
@@ -183,12 +179,25 @@ export class hostContainer {
     return instance;
   }
 
+
+  private async _addplaceholders(axios: Axios) {
+    useLogStore.getState().addLog('normal', '> adding placeholder.jpg');
+    const imageRes = await axios.get('/placeholder.jpg', { responseType: 'arraybuffer' });
+    const buffer1 = new Uint8Array(imageRes.data);
+    await this.wc.fs.writeFile('placeholder.jpg', buffer1);
+
+    useLogStore.getState().addLog('normal', '> adding placeholder.mp4');
+    const videoRes = await axios.get('/placeholder.mp4', { responseType: 'arraybuffer' });
+    const buffer2 = new Uint8Array(videoRes.data);
+    await this.wc.fs.writeFile('placeholder.mp4', buffer2);
+  }
+
+
   public getTheWorkDone = async () => {
     try {
       const filteredFiles = Object.fromEntries(
-        Object.entries(this.containerfiles).filter(
-          ([path]) =>
-            !this.excludePatterns.some((pattern) => pattern.test(path))
+        Object.entries(this.containerfiles).filter(([path]) =>
+          !this.excludePatterns.some(pattern => pattern.test(path))
         )
       );
       console.log("=======================================================>\n");
@@ -205,6 +214,10 @@ export class hostContainer {
       }
 
       console.log("=======================================================>\n");
+
+      if (this.metadata.env) {
+        this.writeFile('.env', this.metadata.env)
+      }
 
       try {
         useLogStore.getState().addLog("normal", "> npm run install");
@@ -267,7 +280,7 @@ export class hostContainer {
   public excludePatterns = [
     /^\.git/,
     /node_modules/,
-    /^\.env/,
+    // /^\.env/,
     /^build\//,
     /^dist\//,
     /^coverage\//,
@@ -291,7 +304,7 @@ export class hostContainer {
           },
           write: (data) => {
             // @ts-ignore
-            console.log(this.constructor.cleanOutput(data));  //or hostContainer.clearnOutput()
+            console.log(this.constructor.cleanOutput(data)); //or hostContainer.clearnOutput()
           },
         })
       );
@@ -341,8 +354,7 @@ export class hostContainer {
         .getState()
         .addLog(
           "error",
-          `Failed to export file: ${
-            error instanceof Error ? error.message : error
+          `Failed to export file: ${error instanceof Error ? error.message : error
           }`
         );
       throw error;
@@ -380,4 +392,58 @@ export class hostContainer {
       throw (error as Error).message;
     }
   };
+
+  public writeFile = async (path: string, content: string) => {
+    await this.wc.fs.writeFile(path, content, { encoding: "utf-8" });
+  };
+
+  public async getFilesName(path: string): Promise<string[]> {
+    const entries = await this.wc.fs.readdir(path, { withFileTypes: true });
+    const files: string[] = [];
+
+    const shouldExclude = (name: string) =>
+      this.excludePatterns.some((pattern) => pattern.test(name));
+
+    const mediaExts = [
+      "png", "jpg", "jpeg", "gif", "webp", "bmp", "ico",
+      "mp4", "webm", "ogg", "mp3", "wav", "pdf"
+    ];
+
+    const isImageFile = (name: string) => {
+      const ext = name.split(".").pop()?.toLowerCase() || "";
+      return mediaExts.includes(ext);
+    };
+
+    for (const entry of entries) {
+      if (shouldExclude(entry.name)) continue;
+      if (!entry.isDirectory() && isImageFile(entry.name)) continue;
+
+      const fullPath = `${path}/${entry.name}`;
+      if (entry.isDirectory()) {
+        const nestedFiles = await this.getFilesName(fullPath);
+        files.push(...nestedFiles);
+      } else {
+        files.push(fullPath);
+      }
+    }
+    return files;
+  }
+
+
+  public readFile = async (path: string) => {
+    return await this.wc.fs.readFile(path, 'utf8');
+  }
+
+  public downloadFile(filepath: string, content: string) {
+    const filename = filepath.split("/").pop();
+    const blob = new Blob([content], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename as string;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
