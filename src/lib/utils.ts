@@ -31,8 +31,8 @@ export const executeCommand = (
   // const [command, ...args] = input.split(' ')
 
   async function jshTerminal(input: string) {
-    host?.tml?.write('-------------------------------------------------------------------------------\n')
-    host?.tml?.write(`/home/${projectName} ${input}\n\n`);
+    host?.tml?.write('-------------------------------------------------------->\n')
+    host?.tml?.write(`~$ ${input}\n\n`);
     const output = await host!.wc.spawn("sh", ["-c", input]);
     output.output.pipeTo(
       new WritableStream({

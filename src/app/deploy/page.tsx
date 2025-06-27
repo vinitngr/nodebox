@@ -563,7 +563,7 @@ export default function ProjectDeploy() {
                               </div>
                             )}
 
-                            <div className="flex-1 overflow-auto pb-10" ref={termRef}></div>
+                            <div className="flex-1 overflow-auto pb-20" ref={termRef}></div>
 
                             <div className="p-3 border-t absolute bottom-0 w-full flex items-center gap-2 bg-black">
                               <span className="text-green-400">{`~ $`}</span>

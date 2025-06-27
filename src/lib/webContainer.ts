@@ -22,7 +22,7 @@ export class hostContainer {
   public root: any;
   public metadata: ProjectMetaData = {};
   public tml : Terminal | null = null ;
-  
+
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
       throw new Error("Option is required");
@@ -394,6 +394,7 @@ export class hostContainer {
       terminalOutput.output.pipeTo(
         new WritableStream({
           write: (data) => {
+              if (!data.trim()) return;
               this.tml?.write(data)
               console.log(data);
           },
