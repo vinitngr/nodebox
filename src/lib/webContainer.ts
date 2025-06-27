@@ -2,7 +2,7 @@ import { ExportOptions, FileSystemTree, WebContainer } from "@webcontainer/api";
 import { useLogStore } from "@/store/logs";
 import { ContainerFile, Option } from "./types";
 import { Axios } from "axios";
-import { replaceImageSrcInJSX } from "./utils";
+import { Terminal } from "@xterm/xterm";
 
 interface ProjectMetaData {
   projectName?: string;
@@ -21,7 +21,8 @@ export class hostContainer {
   public containerport: any;
   public root: any;
   public metadata: ProjectMetaData = {};
-
+  public tml : Terminal | null = null ;
+  
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
       throw new Error("Option is required");
@@ -183,7 +184,6 @@ export class hostContainer {
     if (input.metadata?.buildCommand) instance.metadata.buildCommand = input.metadata.buildCommand;
     if (input.metadata?.rundev) instance.metadata.rundev = input.metadata.rundev;
     instance.metadata.projectName = input.projectName;
-
     useLogStore.getState().addLog("normal", "project initialized: ");
     try {
       useLogStore.getState().addLog("normal", "spining container...");
@@ -204,76 +204,38 @@ export class hostContainer {
   }
 
   private async _addplaceholders(axios: Axios) {
-    useLogStore.getState().addLog("normal", "> adding placeholder.jpg");
-    const imageRes = await axios.get("/placeholder.jpg", {
-      responseType: "arraybuffer",
-    });
     try {
       await this.wc.fs.readdir('./public');
     } catch {
       await this.wc.fs.mkdir('./public', { recursive: true });
     }
-
+    useLogStore.getState().addLog("normal", "adding placeholder.jpg");
+    const imageRes = await axios.get("/placeholder.jpg", {
+      responseType: "arraybuffer",
+    });
     const buffer1 = new Uint8Array(imageRes.data);
     await this.wc.fs.writeFile("./public/placeholder.jpg", buffer1);
 
-    useLogStore.getState().addLog("normal", "> adding placeholder.mp4");
-    const videoRes = await axios.get("/placeholder.mp4", {
-      responseType: "arraybuffer",
-    });
-    const buffer2 = new Uint8Array(videoRes.data);
-    await this.wc.fs.writeFile("./public/placeholder.mp4", buffer2);
+    // useLogStore.getState().addLog("normal", "> adding placeholder.mp4");
+    // const videoRes = await axios.get("/placeholder.mp4", {
+    //   responseType: "arraybuffer",
+    // });
+    // const buffer2 = new Uint8Array(videoRes.data);
+    // await this.wc.fs.writeFile("./public/placeholder.mp4", buffer2);
   }
 
   public getTheWorkDone = async () => {
     try {
-      function replaceUrlsInTree(tree: any): any {
-        const replacedTree: any = {};
 
-        for (const [key, value] of Object.entries(tree) as [string, any][]) {
-          if (value.directory) {
-            replacedTree[key] = {
-              directory: replaceUrlsInTree(value.directory),
-            };
-          } else if (value.file) {
-            const content = value.file.contents;
-            let replacedContent ;
-            if (/\.(jsx|tsx)$/i.test(key.trim()) && content) {
-              console.log('here we go again', key);
-              replacedContent = replaceImageSrcInJSX(content);
-            }
-
-            replacedTree[key] = {
-              file: {
-                contents: replacedContent || content,
-              },
-            };
-          }
-        }
-
-        return replacedTree;
-      }
-
-      const filteredFiles = replaceUrlsInTree(
-        Object.fromEntries(
-          Object.entries(this.containerfiles).filter(
-            ([path]) =>
-              !this.excludePatterns.some((pattern) => pattern.test(path))
-          )
+      const filteredFiles = Object.fromEntries(
+        Object.entries(this.containerfiles).filter(
+          ([path]) =>
+            !this.excludePatterns.some((pattern) => pattern.test(path))
         )
-      );
-
-      // const filteredFiles = Object.fromEntries(
-      //   Object.entries(this.containerfiles).filter(
-      //     ([path]) =>
-      //       !this.excludePatterns.some((pattern) => pattern.test(path))
-      //   )
-      // )
-      console.log("=======================================================>\n");
+      )
 
       try {
         console.log("start mounting");
-        // useLogStore.getState().addLog('normal', 'mounting started')
         await this.wc.mount(filteredFiles as FileSystemTree);
         console.log("done mounting");
         useLogStore.getState().addLog("normal", "files mounted");
@@ -282,7 +244,6 @@ export class hostContainer {
         throw new Error("Error while mounting");
       }
 
-      console.log("=======================================================>\n");
 
       if (this.metadata.env) {
         this.writeFile(".env", this.metadata.env);
@@ -299,12 +260,6 @@ export class hostContainer {
         throw new Error("Error while installing dependencies");
       }
 
-      console.log("=======================================================>\n");
-
-      // console.log('start building');
-      // await this._StartBuild();
-      // console.log('done start building');
-
       console.log(
         " <---- surver is ready bro ---->  "
       );
@@ -317,7 +272,6 @@ export class hostContainer {
         this.containerfiles = {};
       });
 
-      console.log("=======================================================>\n");
 
       console.log("started running the container");
       console.log("run start script");
@@ -368,7 +322,8 @@ export class hostContainer {
           },
           write: (data) => {
             // @ts-ignore
-            console.log(this.constructor.cleanOutput(data)); //or hostContainer.clearnOutput()
+            this.tml?.write(data)
+            console.log(hostContainer.cleanOutput(data)); //or hostContainer.cleanOutput()
           },
         })
       );
@@ -411,22 +366,22 @@ export class hostContainer {
       link.download = `${this.root}.${format === "zip" ? "zip" : "json"}`;
       link.click();
       URL.revokeObjectURL(url);
-      useLogStore
-        .getState()
-        .addLog("normal", `Exported file: ${this.root}.${format}`);
+      // useLogStore
+      //   .getState()
+      //   .addLog("normal", `Exported file: ${this.root}.${format}`);
     } catch (error) {
-      useLogStore
-        .getState()
-        .addLog(
-          "error",
-          `Failed to export file: ${error instanceof Error ? error.message : error
-          }`
-        );
+      // useLogStore
+      //   .getState()
+      //   .addLog(
+      //     "error",
+      //     `Failed to export file: ${error instanceof Error ? error.message : error
+      //     }`
+      //   );
       throw error;
     }
   };
 
-  public runTerminalCommand = async (input: string) => {
+  public runTerminalCommand = async (input: string , type? : string) => {
     // useLogStore.getState().addLog('normal', `Running command: ${input}`)
     try {
       const parts = input.trim().split(" ");
@@ -439,7 +394,8 @@ export class hostContainer {
       terminalOutput.output.pipeTo(
         new WritableStream({
           write: (data) => {
-            console.log(data);
+              this.tml?.write(data)
+              console.log(data);
           },
         })
       );

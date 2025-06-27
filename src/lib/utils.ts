@@ -15,8 +15,8 @@ export const executeCommand = (
   input: string,
   host: hostContainer | null,
   projectName: string,
-  setTerminalHistory: any,
-  terminalHistoryRef: any,
+  // setTerminalHistory: any,
+  // terminalHistoryRef: any,
   setTerminalInput: any
 ) => {
   if (!host) return;
@@ -24,39 +24,37 @@ export const executeCommand = (
   const trimmedCommand = input.trim();
   if (!trimmedCommand) return;
 
-  setTerminalHistory((prev: any) => [
-    ...prev,
-    `${projectName} $ ${trimmedCommand}`,
-  ]);
+  // setTerminalHistory((prev: any) => [
+  //   ...prev,
+  //   `${projectName} $ ${trimmedCommand}`,
+  // ]);
   // const [command, ...args] = input.split(' ')
 
   async function jshTerminal(input: string) {
+    host?.tml?.write('-------------------------------------------------------------------------------\n')
+    host?.tml?.write(`/home/${projectName} ${input}\n\n`);
     const output = await host!.wc.spawn("sh", ["-c", input]);
-
     output.output.pipeTo(
       new WritableStream({
         write(data) {
-          const cleaned = data;
-          if (!cleaned.trim()) return;
-          terminalHistoryRef.current.push(cleaned);
-          setTerminalHistory([...terminalHistoryRef.current]);
+          if (!data.trim()) return;
+          host?.tml?.write(data);
         },
       })
     );
+    return output.exit ;
   }
   switch (trimmedCommand.toLowerCase()) {
     case "clear":
+      host.tml?.clear();
       useLogStore.setState({ logs: [] });
-      setTerminalHistory([]);
-      terminalHistoryRef.current = [];
       break;
     case "whoami":
-      setTerminalHistory((prev: any) => [...prev, 'developer']);
+      host.tml?.write("developer");
       break
     case "help":
-      setTerminalHistory((prev: any) => [
-        ...prev,
-        "Available commands:\n" +
+      host.tml?.write("\n");
+      host.tml?.write("Available commands:\n" +
         "  ls           - list directory contents\n" +
         "  export <file> - export file\n" +
         "  clear        - clear terminal\n" +
@@ -65,15 +63,13 @@ export const executeCommand = (
         "  edit <file>  - open file in editor\n" +
         "  help         - show this help message" +
         "  mkdir <dir>  - create directory\n" +
-        "  touch <file> - create empty file\n"
-      ]);
+        "  touch <file> - create empty file\n");
+   
       break;
     default:
-      console.log(trimmedCommand);
       jshTerminal(trimmedCommand);
       break;
   }
-
   setTerminalInput("");
 };
 
@@ -82,8 +78,6 @@ export const borderColors = {
   warn: 'border-yellow-500',
   error: 'border-red-500',
 };
-
-
 
 export const replaceImageSrcInJSX = (jsxCode: string): string => {
   if (!jsxCode || typeof jsxCode !== 'string') {

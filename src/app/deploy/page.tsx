@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-
+import { Terminal as T } from '@xterm/xterm'
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ import { hostContainer } from "@/lib/webContainer"
 import { useLogStore } from "@/store/logs"
 import { executeCommand } from "@/lib/utils"
 type DeploymentPhase = "form" | "sandbox" | "deploying"
-
+import '@xterm/xterm/css/xterm.css';
 export default function ProjectDeploy() {
   const [phase, setPhase] = useState<DeploymentPhase>("form")
   const [sourceType, setSourceType] = useState<"github" | "folder">("github")
@@ -32,8 +32,8 @@ export default function ProjectDeploy() {
   const [rundev, setRundev] = useState("npm run dev")
   const [envVars, setEnvVars] = useState("")
   const [terminalInput, setTerminalInput] = useState("")
-  const [terminalHistory, setTerminalHistory] = useState<string[]>([])
-  const terminalHistoryRef = useRef<string[]>([]);
+  // const [terminalHistory, setTerminalHistory] = useState<string[]>([])
+  // const terminalHistoryRef = useRef<string[]>([]);
   const [sandboxReady, setSandboxReady] = useState(false)
   const [files, setFiles] = useState<FileList | null>(null);
   const folderRef = useRef<HTMLInputElement>(null)
@@ -43,20 +43,21 @@ export default function ProjectDeploy() {
   const terminalRef = useRef<HTMLDivElement>(null);
   const [availableFiles, setavailableFiles] = useState<string[]>([])
   const [executionTime, setexexecutionTime] = useState<number | null>(null)
-  
+  const [refreshKey, setRefreshKey] = useState(0)
+  const termRef = useRef<HTMLDivElement>(null)
 
   const logs = useLogStore(s => s.logs)
 
   useEffect(() => {
-    if(host) {
+    if (host) {
       host.getFilesName('/').then(files => {
         setavailableFiles(files)
       }).catch(err => {
         console.error("Error fetching root files:", err);
       })
     }
-  } , [host])
-  
+  }, [host, refreshKey])
+
 
   const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const start = performance.now();
@@ -70,11 +71,30 @@ export default function ProjectDeploy() {
       if (useLogStore.getState().hostOn) window.location.reload()
       useLogStore.getState().hostOn = true;
 
-      if (files?.length) newHost = await hostContainer.initialize({ option: 'folder' , projectName : projectName , metadata : {env : envVars , buildCommand , rundev} , files })
+
+      if (files?.length)
+        newHost = await hostContainer.initialize({
+          option: "folder",
+          // tml,
+          projectName: projectName,
+          metadata: { env: envVars, buildCommand, rundev },
+          files,
+        });
       else if (githubUrl.trim()) {
-        console.time('hostContainer')
-        newHost = await hostContainer.initialize({ option: 'github',  projectName : projectName , url: githubUrl , metadata : {env : envVars , branch : customBranch || branch , buildCommand , rundev }})
-      } else return alert('Please provide either a GitHub URL or a folder')
+        console.time("hostContainer");
+        newHost = await hostContainer.initialize({
+          option: "github",
+          // tml : tml,
+          projectName: projectName,
+          url: githubUrl,
+          metadata: {
+            env: envVars,
+            branch: customBranch || branch,
+            buildCommand,
+            rundev,
+          },
+        });
+      } else return alert("Please provide either a GitHub URL or a folder");
 
       newHost.wc.on('server-ready', (port, url) => {
         if (iframeRef.current) {
@@ -97,29 +117,44 @@ export default function ProjectDeploy() {
     useLogStore.setState({ logs: [] });
   }
 
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [terminalHistory]);
+  // useEffect(() => {
+  //   if (terminalRef.current) {
+  //     terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+  //   }
+  // }, [terminalHistory]);
 
-  const resetToForm = () => {
-    setPhase("form")
-    useLogStore.setState({ logs: [] });
-    setTerminalHistory([])
-    setSandboxReady(false)
-  }
-  
+  // const resetToForm = () => {
+  //   setPhase("form")
+  //   useLogStore.setState({ logs: [] });
+  //   // setTerminalHistory([])
+  //   setSandboxReady(false)
+  // }
+
   const handleTerminalKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
+      if (!host) return;
+      if (!host.tml) {
+        const tml = new T({
+          convertEol: true,           // Converts \n to \r\n
+          cursorBlink: true,          // Enables blinking cursor
+          disableStdin: false,        // Allows user input if needed
+
+        });
+
+        if (termRef.current) tml.open(termRef.current as HTMLDivElement);
+        host.tml = tml;
+      }
+
       executeCommand(
         terminalInput,
         host,
         projectName,
-        setTerminalHistory,
-        terminalHistoryRef,
+        // setTerminalHistory,
+        // terminalHistoryRef,
         setTerminalInput
       );
+
+      setRefreshKey(k => k + 1);
     }
   };
 
@@ -396,7 +431,6 @@ export default function ProjectDeploy() {
 
         {(phase === "sandbox" || phase === "deploying") && (
           <div className="space-y-6">
-            {/* 2x2 Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Left - Preview */}
               <Card className="bg-zinc-900 border-zinc-800 text-white">
@@ -404,8 +438,8 @@ export default function ProjectDeploy() {
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Monitor className="h-5 w-5 text-zinc-400" />
                     {phase === "sandbox"
-                    ? 'Sandbox Preview'
-                    : 'Production Preview'}
+                      ? 'Sandbox Preview'
+                      : 'Production Preview'}
 
                   </CardTitle>
                   <Badge
@@ -488,15 +522,15 @@ export default function ProjectDeploy() {
                           <span
                             className={
                               log.msg.includes("error") ||
-                              log.msg.includes("Error") || log.msg.includes("Failed")
+                                log.msg.includes("Error") || log.msg.includes("Failed")
                                 ? "text-red-400"
                                 : log.msg.includes("success") ||
                                   log.msg.includes("🎉") ||
                                   log.msg.includes("🚀")
-                                ? "text-green-400"
-                                : log.msg.startsWith(">")
-                                ? "text-blue-400"
-                                : "text-zinc-300"
+                                  ? "text-green-400"
+                                  : log.msg.startsWith(">")
+                                    ? "text-blue-400"
+                                    : "text-zinc-300"
                             }
                           >
                             {log.msg}
@@ -518,53 +552,39 @@ export default function ProjectDeploy() {
                         </div>
                       )}
 
-                      {/* Interactive terminal when sandbox is ready */}
-                      {sandboxReady  && phase === "sandbox" && (
-                        <>
-                          {logs.length > 0 && (
-                            <div className="border-t border-zinc-800 my-4 pt-4">
-                              <div className="text-zinc-500 text-xs mb-2">
-                                Interactive Terminal (try: ls, clear, help, edit
-                                filename)
+                      <div className="relative w-full flex flex-col">
+                        {sandboxReady && phase === "sandbox" && (
+                          <>
+                            {logs.length > 0 && (
+                              <div className="border-t border-zinc-800 my-4 pt-4">
+                                <div className="text-zinc-500 text-xs mb-2">
+                                  Interactive Terminal (try: ls, clear, help, edit filename)
+                                </div>
                               </div>
-                            </div>
-                          )}
-                          <div
-                            ref={terminalRef}
-                            className="space-y-2 max-h-72 noscrollbar overflow-y-auto"
-                          >
-                            {terminalHistory
-                              .filter((entry) => entry.trim().length > 0)
-                              .map((entry, index) => (
-                                <React.Fragment key={`terminal-frag-${index}`}>
-                                  <span className="text-gray-400 text-xs">{`~ $`}</span>
-                                  <pre className="text-zinc-300 mt-1 whitespace-pre-wrap break-words">
-                                    {entry}
-                                  </pre>
-                                  <Separator className="bg-zinc-800/70 my-3" />
-                                </React.Fragment>
-                              ))}
-                          </div>
+                            )}
 
-                          <div className="absolute bottom-3 w-[90%] flex items-center gap-2 mt-2">
-                            <span className="text-green-400">{`~ $`}</span>
-                            <input
-                              type="text"
-                              value={terminalInput}
-                              onChange={(e) => setTerminalInput(e.target.value)}
-                              onKeyDown={handleTerminalKeyPress}
-                              className="flex-1 bg-transparent border-none outline-none text-white caret-white"
-                              placeholder="Enter command..."
-                              autoFocus
-                            />
-                          </div>
-                        </>
-                      )}
+                            <div className="flex-1 overflow-auto pb-10" ref={termRef}></div>
+
+                            <div className="p-3 border-t absolute bottom-0 w-full flex items-center gap-2 bg-black">
+                              <span className="text-green-400">{`~ $`}</span>
+                              <input
+                                type="text"
+                                value={terminalInput}
+                                onChange={(e) => setTerminalInput(e.target.value)}
+                                onKeyDown={handleTerminalKeyPress}
+                                className="flex-1 bg-transparent border-none outline-none text-white caret-white"
+                                placeholder="Enter command..."
+                                autoFocus
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+
                     </div>
                   </ScrollArea>
                 </CardContent>
               </Card>
-
               {/* Bottom Left - Upload/Publish */}
               {sandboxReady && phase === "sandbox" && (
                 <Card className="bg-zinc-900 border-zinc-800 text-white h-full flex flex-col justify-between">
@@ -625,6 +645,7 @@ export default function ProjectDeploy() {
                   <CodeEditor
                     files={availableFiles}
                     host={host}
+                    refreshKey={refreshKey}
                   />
                 </div>
               )}

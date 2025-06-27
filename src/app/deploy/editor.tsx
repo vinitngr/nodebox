@@ -16,7 +16,7 @@ interface CodeEditorProps {
 }
 
 
-export function CodeEditor({ files, host }: CodeEditorProps) {
+export function CodeEditor({ files, host , refreshKey }: CodeEditorProps & { refreshKey?: number }) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [currentFileContent, setCurrentFileContent] = useState<string>("")
   const [copied, setCopied] = useState(false)
@@ -60,7 +60,7 @@ export function CodeEditor({ files, host }: CodeEditorProps) {
       }
     }
     loadContent()
-  }, [selectedFile])
+  }, [selectedFile , refreshKey])
 
   const onFileSelect = (filename: string) => {
     setSelectedFile(filename)
@@ -92,7 +92,7 @@ export function CodeEditor({ files, host }: CodeEditorProps) {
             File Editor
           </CardTitle>
           <div className="flex items-center gap-2">
-            {selectedFile && <Badge className={getLanguageColor(selectedFile)}>{selectedFile.replace(/\//g, "")}</Badge>}
+            {selectedFile && <Badge className={getLanguageColor(selectedFile)}>{selectedFile.slice(2)}</Badge>}
           </div>
         </div>
 
