@@ -8,4 +8,4 @@ export async function POST() {
   return NextResponse.json({ error: 'API route not found' }, { status: 404 });
 }
 
-// Add other methods as needed (PUT, DELETE, etc.)
+

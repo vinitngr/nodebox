@@ -3,15 +3,8 @@ import { useLogStore } from "@/store/logs";
 import { ContainerFile, Option } from "./types";
 import { Axios } from "axios";
 import { Terminal } from "@xterm/xterm";
+import { ProjectMetaData } from "./types";
 
-interface ProjectMetaData {
-  projectName?: string;
-  description?: string;
-  env?: string;
-  branch?: string;
-  buildCommand ? : string,
-  rundev ? : string
-}
 export class hostContainer {
   private containerfiles: ContainerFile = {};
   public url?: string | undefined;
@@ -215,18 +208,10 @@ export class hostContainer {
     });
     const buffer1 = new Uint8Array(imageRes.data);
     await this.wc.fs.writeFile("./public/placeholder.jpg", buffer1);
-
-    // useLogStore.getState().addLog("normal", "> adding placeholder.mp4");
-    // const videoRes = await axios.get("/placeholder.mp4", {
-    //   responseType: "arraybuffer",
-    // });
-    // const buffer2 = new Uint8Array(videoRes.data);
-    // await this.wc.fs.writeFile("./public/placeholder.mp4", buffer2);
   }
 
   public getTheWorkDone = async () => {
     try {
-
       const filteredFiles = Object.fromEntries(
         Object.entries(this.containerfiles).filter(
           ([path]) =>
@@ -235,9 +220,7 @@ export class hostContainer {
       )
 
       try {
-        console.log("start mounting");
         await this.wc.mount(filteredFiles as FileSystemTree);
-        console.log("done mounting");
         useLogStore.getState().addLog("normal", "files mounted");
       } catch (error) {
         useLogStore.getState().addLog("error", "Error while mounting");
@@ -260,10 +243,6 @@ export class hostContainer {
         throw new Error("Error while installing dependencies");
       }
 
-      console.log(
-        " <---- surver is ready bro ---->  "
-      );
-
       this.wc.on("server-ready", (port, url) => {
         useLogStore.getState().addLog("normal", `success : server is running (preview) ${url} port : ${port}`);
         console.log("server is ready to run", url, port);
@@ -272,9 +251,6 @@ export class hostContainer {
         this.containerfiles = {};
       });
 
-
-      console.log("started running the container");
-      console.log("run start script");
       useLogStore.getState().addLog("normal", `> ${this.metadata.rundev || "npm run dev"}`);
       const code = await this.runTerminalCommand(this.metadata.rundev || "npm run dev");
       if (code === 1) {
@@ -321,8 +297,7 @@ export class hostContainer {
             );
           },
           write: (data) => {
-            // @ts-ignore
-            this.tml?.write(data)
+            // this.tml?.write(data)
             console.log(hostContainer.cleanOutput(data)); //or hostContainer.cleanOutput()
           },
         })
@@ -366,23 +341,13 @@ export class hostContainer {
       link.download = `${this.root}.${format === "zip" ? "zip" : "json"}`;
       link.click();
       URL.revokeObjectURL(url);
-      // useLogStore
-      //   .getState()
-      //   .addLog("normal", `Exported file: ${this.root}.${format}`);
     } catch (error) {
-      // useLogStore
-      //   .getState()
-      //   .addLog(
-      //     "error",
-      //     `Failed to export file: ${error instanceof Error ? error.message : error
-      //     }`
-      //   );
+      console.log('export error');
       throw error;
     }
   };
 
   public runTerminalCommand = async (input: string , type? : string) => {
-    // useLogStore.getState().addLog('normal', `Running command: ${input}`)
     try {
       const parts = input.trim().split(" ");
       if (parts.length === 0 || parts[0] === "") return;
@@ -415,9 +380,25 @@ export class hostContainer {
     }
   };
 
-  public writeFile = async (path: string, content: string) => {
-    await this.wc.fs.writeFile(path, content, { encoding: "utf-8" });
-  };
+  public writeFile = async (filePath: string, content: string) => {
+  const normalized = filePath.replace(/\/+/g, '/'); 
+  const parts = normalized.split('/');
+  const dirs = parts.slice(0, -1);
+
+  let current = '';
+  for (const part of dirs) {
+    if (!part) continue;
+    current += '/' + part;
+    try {
+      await this.wc.fs.mkdir(current);
+    } catch (e: any) {
+      if (e?.message?.includes('EEXIST') === false) throw e;
+    }
+  }
+
+  await this.wc.fs.writeFile(normalized, content, { encoding: 'utf-8' });
+};
+
 
   public async getFilesName(path: string): Promise<string[]> {
     const entries = await this.wc.fs.readdir(path, { withFileTypes: true });
@@ -463,5 +444,9 @@ export class hostContainer {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  public deleteFile(path : string){
+    this.wc.fs.rm( path , { force : true })
   }
 }

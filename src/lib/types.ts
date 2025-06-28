@@ -17,4 +17,15 @@ export interface ContainerFile {
     };
 }
 
+
+
+export interface ProjectMetaData {
+  projectName?: string;
+  description?: string;
+  env?: string;
+  branch?: string;
+  buildCommand ? : string,
+  rundev ? : string
+}
+
 export type Option = "github" | "folder"

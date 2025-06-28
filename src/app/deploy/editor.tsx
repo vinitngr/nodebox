@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Save, Download, Copy, Check } from "lucide-react"
+import { FileText, Save, Download, Copy, Check, Plus, Delete, DeleteIcon, Trash } from "lucide-react"
 import { hostContainer } from "@/lib/webContainer"
 // import { files } from "@/data/fakeData" 
 
@@ -16,7 +16,7 @@ interface CodeEditorProps {
 }
 
 
-export function CodeEditor({ files, host , refreshKey }: CodeEditorProps & { refreshKey?: number }) {
+export function CodeEditor({ files, host , refreshKey , setFiles }: CodeEditorProps & { refreshKey?: number } & { setFiles?: (files: string[]) => void }) {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [currentFileContent, setCurrentFileContent] = useState<string>("")
   const [copied, setCopied] = useState(false)
@@ -66,6 +66,34 @@ export function CodeEditor({ files, host , refreshKey }: CodeEditorProps & { ref
     setSelectedFile(filename)
   }
 
+  const createFunction = async () => {
+    const newFileName = prompt("Enter new file name (e.g., newfile.js or public/index.js):")
+    if (newFileName) {
+      try {
+        await host.writeFile(newFileName, "")
+        setSelectedFile(`//${newFileName}`)
+        setCurrentFileContent("")
+        setFiles?.([...files, `//${newFileName}`])
+      } catch (error) {
+        console.error("Error creating file:", error)
+      }
+    }
+  }
+  const deleteFile = async () => {
+    if (selectedFile) {
+      const confirmDelete = confirm(`Are you sure you want to delete ${selectedFile}?`)
+      if (confirmDelete) {
+        try {
+          host.deleteFile(selectedFile)
+          setSelectedFile(null)
+          setCurrentFileContent("")
+          setFiles?.(files.filter(file => file !== selectedFile))
+        } catch (error) {
+          console.error("Error deleting file:", error)
+        }
+      }
+    }
+  }
   const getLanguageColor = (language: string) => {
     switch (language.split('.').pop()?.toLowerCase()) {
       case "js":
@@ -143,6 +171,22 @@ export function CodeEditor({ files, host , refreshKey }: CodeEditorProps & { ref
                 className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white"
               >
                 <Download className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={deleteFile}
+                className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+              >
+                <Trash className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={createFunction}
+                className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+              >
+                <Plus className="h-3 w-3" />
               </Button>
             </div>
           )}

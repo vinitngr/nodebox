@@ -20,6 +20,8 @@ import { useLogStore } from "@/store/logs"
 import { executeCommand } from "@/lib/utils"
 type DeploymentPhase = "form" | "sandbox" | "deploying"
 import '@xterm/xterm/css/xterm.css';
+import { useSession } from "next-auth/react"
+import SignInPage from "@/components/SignIn"
 export default function ProjectDeploy() {
   const [phase, setPhase] = useState<DeploymentPhase>("form")
   const [sourceType, setSourceType] = useState<"github" | "folder">("github")
@@ -45,7 +47,8 @@ export default function ProjectDeploy() {
   const [executionTime, setexexecutionTime] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const termRef = useRef<HTMLDivElement>(null)
-
+  const { data: session , status } = useSession();
+  console.log(session);
   const logs = useLogStore(s => s.logs)
 
   useEffect(() => {
@@ -157,8 +160,8 @@ export default function ProjectDeploy() {
       setRefreshKey(k => k + 1);
     }
   };
-
-  return (
+  if (status === 'loading') return null
+  return ( session ?
     <div className="p-4">
       <div className="max-w-7xl pt-20 mx-auto">
         {phase === "form" && (
@@ -646,6 +649,7 @@ export default function ProjectDeploy() {
                     files={availableFiles}
                     host={host}
                     refreshKey={refreshKey}
+                    setFiles={setavailableFiles}
                   />
                 </div>
               )}
@@ -653,6 +657,6 @@ export default function ProjectDeploy() {
           </div>
         )}
       </div>
-    </div>
+    </div> : <SignInPage/>
   );
 }

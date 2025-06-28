@@ -3,14 +3,21 @@
 import { Button } from "@/components/ui/button"
 import { useLogStore } from "@/store/logs";
 import { Github, Zap } from "lucide-react"
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 export function Navigation() {
 
   const router = useRouter();
+  const { data: session } = useSession();
 
-  const head = (where : string) => {
-    // if(useLogStore.getState().hostOn || where === "/deploy") window.location.reload()
-    router.push(where)
+  const head = (where: string) => {
+    const protectedRoutes = ['/deploy' , '/dashboard']  
+    if (protectedRoutes.includes(where)) {
+      if (session) router.push(where)
+      else router.push('/auth/signin')
+    } else {
+      router.push(where)
+    }
   };
 
   return (
@@ -33,7 +40,7 @@ export function Navigation() {
             <button onClick={() => head("/deploy")} className="text-zinc-400 hover:text-white transition-colors font-mono">
               Deploy
             </button>
-            <button className="text-zinc-400 hover:text-white transition-colors font-mono" onClick={() => head("/dashboard")}>My-Projects</button>
+            <button className="text-zinc-400 hover:text-white transition-colors font-mono" onClick={() => head("/dashboard")}>dashboard</button>
             <button className="text-zinc-400 hover:text-white transition-colors font-mono" onClick={() => head("/community")}>Community</button>
           </div>
 
@@ -42,9 +49,29 @@ export function Navigation() {
               <Github className="h-4 w-4 mr-2" />
             </Button>
 
-            <Button variant={"ghost"} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-mono">
-              SignIn
-            </Button>
+            {session ? (
+              <>
+                <p>Welcome {session.user?.name}</p>
+                <Button
+                  onClick={() => signOut()}
+                  variant="ghost"
+                  size="sm"
+                  className="bg-red-600 hover:bg-red-700 text-white font-mono"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => signIn("github")}
+                variant="ghost"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-mono"
+              >
+                Sign In
+              </Button>
+            )}
+
           </div>
         </div>
       </div>
