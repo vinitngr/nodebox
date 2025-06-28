@@ -7,7 +7,9 @@ import { Globe, Edit, Settings, ExternalLink, Calendar, Clock, Plus, Search } fr
 import { Input } from "@/components/ui/input"
 import { projects } from "@/data/fakeData"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 export function ProjectDashboard() {
+  const { data: session } = useSession()
   const router = useRouter()
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-4">
@@ -15,7 +17,7 @@ export function ProjectDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Your Projects</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Welcome , {session?.user?.name}</h1>
             <p className="text-zinc-400">Manage and monitor your deployed applications</p>
           </div>
           <Button className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -45,7 +47,7 @@ export function ProjectDashboard() {
           {projects.map((project) => (
             <Card
               key={project.id}
-              className="bg-zinc-900 border-zinc-800 text-white hover:border-gray-600 transition-colors"
+              className="bg-zinc-900/40 border-zinc-800 text-white hover:border-gray-600 transition-colors"
             >
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
@@ -83,21 +85,21 @@ export function ProjectDashboard() {
 
               <CardContent className="space-y-4">
                 {/* Project URL */}
-                <div className="bg-zinc-800 rounded-lg p-3">
+                <div className="bg-zinc-800/70 rounded-lg p-3">
                   <p className="text-xs text-zinc-500 mb-1">URL</p>
                   <p className="text-white text-sm font-medium truncate">https://{project.url}</p>
                 </div>
 
                 {/* Project Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-zinc-800 rounded-lg p-3">
+                  <div className="bg-zinc-800/70 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="h-3 w-3 text-zinc-500" />
                       <span className="text-xs text-zinc-500">Deployed</span>
                     </div>
                     <p className="text-white text-sm font-medium">{project.deployedAt}</p>
                   </div>
-                  <div className="bg-zinc-800 rounded-lg p-3">
+                  <div className="bg-zinc-800/70 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <Clock className="h-3 w-3 text-zinc-500" />
                       <span className="text-xs text-zinc-500">Build Time</span>
@@ -108,7 +110,10 @@ export function ProjectDashboard() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-gradient-to-r from-pink-700 to-blue-900 hover:from-pink-800 hover:to-blue-900 text-white"
+                  >
                     <ExternalLink className="h-3 w-3 mr-1" />
                     Visit
                   </Button>

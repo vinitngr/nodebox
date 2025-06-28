@@ -40,15 +40,18 @@ const handler = NextAuth({
       }
       return session
     },
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.username = (user as any).username
         token.url = (user as any).url
       }
       return token
-    }
-  }
+    },
+    async redirect({ url, baseUrl }) {
+      return url.startsWith(baseUrl) ? url : baseUrl + "/dashboard";
+    },
+  },
 })
 
 export { handler as GET, handler as POST }

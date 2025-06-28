@@ -1,5 +1,5 @@
 import React from 'react'
-import { ProjectDashboard } from '../deploy/dashboard'
+import { ProjectDashboard } from './dashboard'
 
 function page() {
   return (

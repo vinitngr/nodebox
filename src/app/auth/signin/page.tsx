@@ -3,10 +3,10 @@ import { signIn } from 'next-auth/react'
 
 export default function SignInPage() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
+    <div className="flex items-center justify-center min-h-screen bg-gray-950">
       <button
-        onClick={() => signIn('github')}
-        className="flex items-center space-x-3 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-md text-white font-semibold transition"
+        onClick={() => signIn('github' , {callbackUrl: '/dashboard'})} 
+        className="flex items-center space-x-3 px-6 py-3 bg-gray-900 hover:bg-gray-700 rounded-md text-white font-semibold transition"
       >
         <svg
           className="w-6 h-6"
