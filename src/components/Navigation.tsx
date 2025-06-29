@@ -1,14 +1,21 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { CloudUpload, Github, HomeIcon, LayoutDashboardIcon, LogOutIcon, Zap } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import {
+  CloudUpload,
+  Github,
+  HomeIcon,
+  LayoutDashboardIcon,
+  LogOutIcon,
+} from "lucide-react";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SelectSeparator } from "./ui/select";
 export function Navigation() {
   const [stars, setStars] = useState<number | null>(null);
-
+  const head = useRouter().push;
+  const pathname = usePathname();
   useEffect(() => {
     fetch("https://api.github.com/repos/HostThrough/hostthrough")
       .then((res) => res.json())
@@ -18,47 +25,73 @@ export function Navigation() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { data: session } = useSession();
-
-  const head = (where: string) => {
-    const protectedRoutes = ['/deploy', '/dashboard']
-    if (protectedRoutes.includes(where)) {
-      if (session) router.push(where)
-      else router.replace('/auth/signin')
-    } else {
-      router.push(where)
-    }
-  };
+console.log(session);
+  const btnClass = (path: string) =>
+    `font-mono transition-colors cursor-pointer ${
+      pathname === path
+        ? "text-white bg-zinc-500/20 px-2 py-1 rounded"
+        : "text-zinc-400 hover:text-white"
+    }`;
 
   return (
-    <nav className="fixed top-0 m-auto max-w-[80%] py-1 border my-3 rounded-3xl  left-0 right-0 z-50 bg-zinc-950/50 backdrop-blur-lg shadow border-zinc-900/50">
+    <nav className="fixed top-0  before-nav m-auto max-w-[95%] md:max-w-[80%] py-1 my-3 rounded-2xl  left-0 right-0 z-50 bg-zinc-900/60 border backdrop-blur-lg shadow border-zinc-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <button className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-              <Zap className="h-5 w-5 text-black" />
-            </div>
-            <span className="text-white font-bold text-lg font-mono" onClick={() => router.push("/")}>HostThrough</span>
+            <span
+              className="bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent font-bold text-lg font-mono"
+              onClick={() => router.push("/")}
+            >
+              Nodebox
+            </span>
           </button>
 
           {/* Navigation Links */}
-          <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => head("/")} className="bg-gradient-to-r from-blue-500 to-pink-600 bg-clip-text text-transparent font-mono">
+          <div className="hidden md:flex  items-center gap-8">
+            <button
+              onClick={() => head("/")}
+              className="bg-gradient-to-r from-blue-500 to-pink-600 bg-clip-text text-transparent font-mono"
+            >
               Welcome!
             </button>
-            <button onClick={() => head("/deploy")} className="text-zinc-400 hover:text-white transition-colors font-mono">
+            <button
+              onClick={() => head("/deploy")}
+              className={btnClass("/deploy")}
+            >
               Deploy
             </button>
-            <button className="text-zinc-400 hover:text-white transition-colors font-mono" onClick={() => head("/dashboard")}>dashboard</button>
-            <button className="text-zinc-400 hover:text-white transition-colors font-mono" onClick={() => head("/community")}>Community</button>
+            <button
+              onClick={() => head("/dashboard")}
+              className={btnClass("/dashboard")}
+            >
+              dashboard
+            </button>
+            <button
+              onClick={() => head("/community")}
+              className={btnClass("/community")}
+            >
+              Explore
+            </button>
+            <button
+              onClick={() => window.open("https://netlify.vinitngr.xyz")}
+              className="text-zinc-400 hover:text-white transition-colors font-mono"
+            >
+              About
+            </button>
           </div>
 
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
-              className="text-zinc-400 hover:text-white hover:bg-zinc-800 font-mono flex items-center"
-              onClick={() => window.open("https://github.com/HostThrough/hostthrough/stargazers", "_blank")}
+              className="text-zinc-400 hover:text-white hover:bg-zinc-900  font-mono flex items-center"
+              onClick={() =>
+                window.open(
+                  "https://github.com/HostThrough/hostthrough/stargazers",
+                  "_blank"
+                )
+              }
             >
               <Github className="h-4 w-4 mr-2" />
               {stars !== null && <span>{stars || 1}</span>}
@@ -80,7 +113,7 @@ export function Navigation() {
 
                   {open && (
                     <div
-                      className="absolute right-0 mt-4 cursor-pointer rounded-lg p-2 bg-zinc-950  border border-gray-700 shadow-lg z-10"
+                      className="absolute -right-8 mt-5 cursor-pointer rounded-lg p-2 bg-zinc-950  border border-gray-800 shadow-lg z-10"
                       onClick={() => setOpen(false)}
                     >
                       <div className="w-full text-left text-sm px-4 py-2 text-gray-200 flex flex-col hover:bg-zinc-900 hover:text-white">
@@ -132,5 +165,5 @@ export function Navigation() {
         </div>
       </div>
     </nav>
-  )
+  );
 }

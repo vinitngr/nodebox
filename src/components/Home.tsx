@@ -19,11 +19,11 @@ export default function HomePage() {
     style={{
         background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.25), transparent 70%), #000000",
       }}
-    className={cn( spaceGrotesk.className ,"h-screen bg-zinc-950 text-white overflow-hidden") }>
+    className={cn( spaceGrotesk.className ,"sm:h-screen bg-zinc-900/50  text-white overflow-hidden") }
+    >
 
 
-      {/* Hero Section - First Screen */}
-      <section className="relative h-screen flex items-center justify-center pt-10 px-4">
+      <section className="relative pt-34 sm:h-screen flex items-center justify-center sm:pt-15 px-4">
         <div className="max-w-5xl mx-auto text-center ">
           {/* Badge */}
           <Badge className="mb-6 bg-blue-500/10 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">
@@ -53,7 +53,7 @@ export default function HomePage() {
             <Button
               onClick={() => scrollToForm('deploy')}
               size="lg"
-              className="bg-blue-600  cursor-pointer hover:bg-blue-700 text-white px-8 py-4 text-base font-semibold"
+              className=" bg-gradient-to-r from-blue-700 to-cyan-700  cursor-pointer hover:bg-blue-700 text-white px-8 py-4 text-base font-semibold"
             >
               <Rocket className="h-5 w-5 mr-2" />
               Start Deploying
@@ -62,7 +62,7 @@ export default function HomePage() {
             <Button
               onClick={() => scrollToForm('community')}
               size="lg"
-              className="bg-pink-600  cursor-pointer hover:bg-pink-700 text-white px-8 py-4 text-base font-semibold"
+              className=" bg-gradient-to-r from-pink-700 to-orange-300  cursor-pointer hover:bg-pink-700 text-white px-8 py-4 text-base font-semibold"
             >
               <Globe2Icon/>
               Explore

@@ -112,7 +112,7 @@ export function CodeEditor({ files, host , refreshKey , setFiles }: CodeEditorPr
   }
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800 text-white">
+    <Card className="bg-zinc-900/50 border-zinc-800 text-white">
       <CardHeader className="pb-4 border-b border-zinc-800">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">

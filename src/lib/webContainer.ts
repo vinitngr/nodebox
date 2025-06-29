@@ -188,7 +188,10 @@ export class hostContainer {
       useLogStore
         .getState()
         .addLog("error", "Error while booting the container");
-      throw new Error("Error while booting the container");
+      if((error as Error).message = 'Unable to create more instances'){
+        window.location.reload()
+      }
+      throw error
     }
     //important
     // Object.setPrototypeOf(instance, wc);  instance wil get property of wc

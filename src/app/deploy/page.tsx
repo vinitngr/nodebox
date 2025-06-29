@@ -22,6 +22,8 @@ type DeploymentPhase = "form" | "sandbox" | "deploying"
 import '@xterm/xterm/css/xterm.css';
 import { useSession } from "next-auth/react"
 import SignInPage from "@/components/SignIn"
+
+
 export default function ProjectDeploy() {
   const [phase, setPhase] = useState<DeploymentPhase>("form")
   const [sourceType, setSourceType] = useState<"github" | "folder">("github")
@@ -34,21 +36,17 @@ export default function ProjectDeploy() {
   const [rundev, setRundev] = useState("npm run dev")
   const [envVars, setEnvVars] = useState("")
   const [terminalInput, setTerminalInput] = useState("")
-  // const [terminalHistory, setTerminalHistory] = useState<string[]>([])
-  // const terminalHistoryRef = useRef<string[]>([]);
   const [sandboxReady, setSandboxReady] = useState(false)
   const [files, setFiles] = useState<FileList | null>(null);
   const folderRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [containerUrl, setContainerUrl] = useState<string | undefined>();
   const [host, setHost] = useState<hostContainer | null>(null);
-  const terminalRef = useRef<HTMLDivElement>(null);
   const [availableFiles, setavailableFiles] = useState<string[]>([])
   const [executionTime, setexexecutionTime] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const termRef = useRef<HTMLDivElement>(null)
   const { data: session, status } = useSession();
-  console.log(session);
   const logs = useLogStore(s => s.logs)
 
   useEffect(() => {
@@ -71,14 +69,13 @@ export default function ProjectDeploy() {
     e.preventDefault()
     try {
       let newHost
-      if (useLogStore.getState().hostOn) window.location.reload()
+      // if (useLogStore.getState().hostOn) window.location.reload()
       useLogStore.getState().hostOn = true;
 
 
       if (files?.length)
         newHost = await hostContainer.initialize({
           option: "folder",
-          // tml,
           projectName: projectName,
           metadata: { env: envVars, buildCommand, rundev },
           files,
@@ -87,7 +84,6 @@ export default function ProjectDeploy() {
         console.time("hostContainer");
         newHost = await hostContainer.initialize({
           option: "github",
-          // tml : tml,
           projectName: projectName,
           url: githubUrl,
           metadata: {
@@ -111,7 +107,8 @@ export default function ProjectDeploy() {
         }
       })
       await newHost.getTheWorkDone()
-
+      setHost(newHost)
+      setSandboxReady(true)
     } catch (error) { console.log("Error:", error) }
   }
 
@@ -152,8 +149,6 @@ export default function ProjectDeploy() {
         terminalInput,
         host,
         projectName,
-        // setTerminalHistory,
-        // terminalHistoryRef,
         setTerminalInput
       );
 
@@ -162,7 +157,7 @@ export default function ProjectDeploy() {
   };
   if (status === 'loading') return null
   return session ? (
-    <div className="p-4 mt-4">
+    <div className="mt-8 p-1 mb-5  max-w-[95%] md:max-w-[80%] m-auto">
       <div className="max-w-7xl pt-20 mx-auto">
         {phase === "form" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -179,7 +174,7 @@ export default function ProjectDeploy() {
               </p>
             </div>
 
-            <Card className="bg-zinc-900/40 border-zinc-800 text-white">
+            <Card className="bg-zinc-900/50 border-zinc-800 text-white">
               <CardHeader className="pb-4 border-b border-zinc-800">
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Settings className="h-5 w-5 text-zinc-400" />
@@ -435,7 +430,7 @@ export default function ProjectDeploy() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Left - Preview */}
-              <Card className="bg-zinc-900 border-zinc-800 text-white">
+              <Card className="bg-zinc-900/50 border-zinc-800 text-white">
                 <CardHeader className="pb-4 border-b border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Monitor className="h-5 w-5 text-zinc-400" />
@@ -492,7 +487,7 @@ export default function ProjectDeploy() {
               </Card>
 
               {/* Top Right - Logs & Terminal */}
-              <Card className="bg-zinc-900 border-zinc-800 text-white">
+              <Card className="bg-zinc-900/50 border-zinc-800 text-white">
                 <CardHeader className="pb-4 border-b border-zinc-800">
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Terminal className="h-5 w-5 text-zinc-400" />
@@ -598,7 +593,7 @@ export default function ProjectDeploy() {
               </Card>
               {/* Bottom Left - Upload/Publish */}
               {sandboxReady && phase === "sandbox" && (
-                <Card className="bg-zinc-900 border-zinc-800 text-white h-full flex flex-col justify-between">
+                <Card className="bg-zinc-900/50 border-zinc-800 text-white h-full flex flex-col justify-between">
                   <CardHeader className="pb-4 border-b border-zinc-800">
                     <CardTitle className="flex items-center gap-2 text-white">
                       <CloudUpload className="h-5 w-5 text-zinc-400" />
@@ -646,7 +641,11 @@ export default function ProjectDeploy() {
                           </Button>
                           <Button className="bg-zinc-800 text-white">
                             <Download className="h-4 w-4 mr-2" />
-                            Download Build
+                            Build
+                          </Button>
+                          <Button className="bg-zinc-800 text-white">
+                            <Download className="h-4 w-4 mr-2" />
+                            Root
                           </Button>
                         </div>
                         <Button
