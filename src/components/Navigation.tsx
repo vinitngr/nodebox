@@ -30,7 +30,7 @@ export function Navigation() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+    <nav className="fixed top-0 m-auto max-w-[80%] py-1 border my-3 rounded-3xl  left-0 right-0 z-50 bg-zinc-950/50 backdrop-blur-lg shadow border-zinc-900/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -80,7 +80,7 @@ export function Navigation() {
 
                   {open && (
                     <div
-                      className="absolute right-0 mt-2 cursor-pointer bg-zinc-950  border border-gray-700 rounded shadow-lg z-10"
+                      className="absolute right-0 mt-4 cursor-pointer rounded-lg p-2 bg-zinc-950  border border-gray-700 shadow-lg z-10"
                       onClick={() => setOpen(false)}
                     >
                       <div className="w-full text-left text-sm px-4 py-2 text-gray-200 flex flex-col hover:bg-zinc-900 hover:text-white">

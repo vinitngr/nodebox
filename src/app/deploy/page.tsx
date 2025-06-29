@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload } from "lucide-react"
+import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload, Download, FolderGit } from "lucide-react"
 import { CodeEditor } from "./editor"
 import { hostContainer } from "@/lib/webContainer"
 import { useLogStore } from "@/store/logs"
@@ -47,7 +47,7 @@ export default function ProjectDeploy() {
   const [executionTime, setexexecutionTime] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const termRef = useRef<HTMLDivElement>(null)
-  const { data: session , status } = useSession();
+  const { data: session, status } = useSession();
   console.log(session);
   const logs = useLogStore(s => s.logs)
 
@@ -161,8 +161,8 @@ export default function ProjectDeploy() {
     }
   };
   if (status === 'loading') return null
-  return ( session ?
-    <div className="p-4">
+  return session ? (
+    <div className="p-4 mt-4">
       <div className="max-w-7xl pt-20 mx-auto">
         {phase === "form" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -332,7 +332,6 @@ export default function ProjectDeploy() {
                             if (/^[a-zA-Z\s]*$/.test(val)) {
                               setProjectName(val);
                             }
-
                           }}
                           className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500"
                         />
@@ -441,9 +440,8 @@ export default function ProjectDeploy() {
                   <CardTitle className="flex items-center gap-2 text-white">
                     <Monitor className="h-5 w-5 text-zinc-400" />
                     {phase === "sandbox"
-                      ? 'Sandbox Preview'
-                      : 'Production Preview'}
-
+                      ? "Sandbox Preview"
+                      : "Production Preview"}
                   </CardTitle>
                   <Badge
                     className={
@@ -453,7 +451,11 @@ export default function ProjectDeploy() {
                     }
                   >
                     {sandboxReady && phase === "sandbox"
-                      ? `ready ${executionTime ? ` (${Math.round(executionTime / 1000)} s)` : ''}`
+                      ? `ready ${
+                          executionTime
+                            ? ` (${Math.round(executionTime / 1000)} s)`
+                            : ""
+                        }`
                       : "Loading..."}
                   </Badge>
                 </CardHeader>
@@ -525,15 +527,16 @@ export default function ProjectDeploy() {
                           <span
                             className={
                               log.msg.includes("error") ||
-                                log.msg.includes("Error") || log.msg.includes("Failed")
+                              log.msg.includes("Error") ||
+                              log.msg.includes("Failed")
                                 ? "text-red-400"
                                 : log.msg.includes("success") ||
                                   log.msg.includes("🎉") ||
                                   log.msg.includes("🚀")
-                                  ? "text-green-400"
-                                  : log.msg.startsWith(">")
-                                    ? "text-blue-400"
-                                    : "text-zinc-300"
+                                ? "text-green-400"
+                                : log.msg.startsWith(">")
+                                ? "text-blue-400"
+                                : "text-zinc-300"
                             }
                           >
                             {log.msg}
@@ -561,19 +564,25 @@ export default function ProjectDeploy() {
                             {logs.length > 0 && (
                               <div className="border-t border-zinc-800 my-4 pt-4">
                                 <div className="text-zinc-500 text-xs mb-2">
-                                  Interactive Terminal (try: ls, clear, help, edit filename)
+                                  Interactive Terminal (try: ls, clear, help,
+                                  edit filename)
                                 </div>
                               </div>
                             )}
 
-                            <div className="flex-1 overflow-auto pb-20" ref={termRef}></div>
+                            <div
+                              className="flex-1 overflow-auto pb-20"
+                              ref={termRef}
+                            ></div>
 
                             <div className="p-3 border-t absolute bottom-0 w-full flex items-center gap-2 bg-black">
                               <span className="text-green-400">{`~ $`}</span>
                               <input
                                 type="text"
                                 value={terminalInput}
-                                onChange={(e) => setTerminalInput(e.target.value)}
+                                onChange={(e) =>
+                                  setTerminalInput(e.target.value)
+                                }
                                 onKeyDown={handleTerminalKeyPress}
                                 className="flex-1 bg-transparent border-none outline-none text-white caret-white"
                                 placeholder="Enter command..."
@@ -583,7 +592,6 @@ export default function ProjectDeploy() {
                           </>
                         )}
                       </div>
-
                     </div>
                   </ScrollArea>
                 </CardContent>
@@ -596,32 +604,51 @@ export default function ProjectDeploy() {
                       <CloudUpload className="h-5 w-5 text-zinc-400" />
                       Deploy to Production
                     </CardTitle>
-                    <Badge className="bg-green-900 mt-2 text-green-300 border-green-800">
-                      Deploy
-                    </Badge>
+                    <div className="flex gap-2 mt-2">
+                      <Badge className="bg-green-900 text-green-300 border-green-800">
+                        Deploy
+                      </Badge>
+                      <Badge className="bg-blue-900 text-blue-300 border-blue-800">
+                        Ready
+                      </Badge>
+                    </div>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className=" flex flex-col justify-center">
-                      <div className="text-center mb-6">
-                        <h3 className="text-lg font-semibold text-white mb-2">
-                          Ready to Deploy!
-                        </h3>
-                        <p className="text-zinc-400 text-sm mb-4">
-                          Your project is running perfectly in the sandbox.
-                          Deploy to production to make it live for everyone.
-                        </p>
-                        <div className="bg-zinc-800 rounded-lg p-4 mb-4">
-                          <p className="text-sm text-zinc-400 mb-1">
-                            Production URL
+
+                  <CardContent className="pt-6 flex-1 flex flex-col">
+                    <div className="flex flex-col justify-between flex-1">
+                      <div>
+                        <div className="text-center">
+                          <h3 className="text-lg font-semibold text-white mb-2">
+                            Ready to Deploy!
+                          </h3>
+                          <p className="text-zinc-400 text-sm mb-4">
+                            Your project is running perfectly in the sandbox.
+                            Deploy to production to make it live for everyone.
                           </p>
-                          <p className="text-white font-medium">
-                            https://
-                            {projectName.toLowerCase().replace(/\s+/g, "-")}
-                            .deployhub.app
-                          </p>
+
+                          <div className="bg-zinc-800 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-zinc-400 mb-1">
+                              Production URL
+                            </p>
+                            <p className="text-white font-medium">
+                              https://
+                              {projectName.toLowerCase().replace(/\s+/g, "")}
+                              .vinitngr.xyz
+                            </p>
+                          </div>
                         </div>
                       </div>
+
                       <div className="flex flex-col gap-3">
+                        <div className="flex w-full gap-2">
+                          <Button className="bg-zinc-800 flex-1 text-white">
+                            Build
+                          </Button>
+                          <Button className="bg-zinc-800 text-white">
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Build
+                          </Button>
+                        </div>
                         <Button
                           onClick={deployToProduction}
                           className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -629,13 +656,6 @@ export default function ProjectDeploy() {
                           <CloudUpload className="h-4 w-4 mr-2" />
                           Deploy to Production
                         </Button>
-                        {/* <Button
-                          onClick={resetToForm}
-                          variant="outline"
-                          className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                        >
-                          Edit Configuration
-                        </Button> */}
                       </div>
                     </div>
                   </CardContent>
@@ -657,6 +677,8 @@ export default function ProjectDeploy() {
           </div>
         )}
       </div>
-    </div> : <SignInPage/>
+    </div>
+  ) : (
+    <SignInPage />
   );
 }
