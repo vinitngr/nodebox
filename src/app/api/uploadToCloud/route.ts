@@ -61,8 +61,13 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (existing.length > 0) {
-      const suffix = randomBytes(2).toString('hex'); // e.g., "a1b2c3"
+      const suffix = randomBytes(2).toString('hex');
       finalName = `${projectName}-${suffix}`;
+    }
+
+    const fileCount = Object.keys(zip).length;
+    if (fileCount > 20) {
+      throw new Error(`Upload aborted: Too many files in zip (${fileCount})`);
     }
 
     for (const [path, content] of Object.entries(zip)) {
