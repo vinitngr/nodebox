@@ -26,7 +26,7 @@ export default function HomePage() {
       <section className="relative pt-34 sm:h-screen flex items-center justify-center sm:pt-15 px-4">
         <div className="max-w-5xl mx-auto text-center ">
           {/* Badge */}
-          <Badge className="mb-6 bg-blue-500/10 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">
+          <Badge className="mb-6 bg-blue-500/10 translate-y-5 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">
             <Sparkles className="h-3 w-3 mr-1 " />
             Built with 
             <span className="text-lg bg-gradient-to-r from-pink-500 to-blue-600 bg-clip-text text-transparent font-bold">Bolt.new</span>
@@ -35,16 +35,16 @@ export default function HomePage() {
 
           {/* Main Heading */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-zinc-100 to-zinc-300 bg-clip-text text-transparent leading-tight tracking-tight">
-            Deploy, Build &{" "}
+            Deploy, PlayAround &{" "}
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Ship</span>
             <br />
             React Projects
+            <span className="text-lg bg-gradient-to-r from-pink-500 to-blue-600 bg-clip-text text-transparent ml-4">right away</span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base md:text-lg text-zinc-400 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Built by developers, loved by teams. Deploy from GitHub or upload directly with real-time build logs , code Editor and
-            interactive terminal.
+          <p className="text-base md:text-sm text-zinc-400 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Powered by WebContainers and Bolt.new. Load your project, build with real-time logs, edit , and deploy — all without leaving your browser.
           </p>
 
           {/* CTA Buttons */}
