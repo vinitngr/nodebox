@@ -16,7 +16,8 @@ export const projectsTable = pgTable("projects", {
   url: varchar({ length: 512 }).notNull(),
   description: varchar({ length: 1000 }),
   githubUrl: varchar({ length: 512 }),
-  buildTime: integer().notNull(),
+  buildTime: integer().default(-1),
   email: varchar({ length: 255 }).notNull().references(() => usersTable.email),
   created_at: timestamp().defaultNow().notNull(),
+  devTime : integer().default(-1)
 });

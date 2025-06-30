@@ -25,7 +25,9 @@ export interface ProjectMetaData {
   env?: string;
   branch?: string;
   buildCommand ? : string,
-  rundev ? : string
+  rundev ? : string,
+  devtime? : number,
+  buildtime? : number,
 }
 
 export type Option = "github" | "folder"

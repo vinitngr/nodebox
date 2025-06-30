@@ -37,6 +37,7 @@ export function CodeEditor({ files, host , refreshKey , setFiles }: CodeEditorPr
     }
   }
 
+  console.log('all files' , files);
   const downloadFile = async () => {
     console.log(selectedFile);
     if (selectedFile && currentFileContent) {

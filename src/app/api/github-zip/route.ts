@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing query params' }, { status: 400 });
   }
   
-  const zipUrl = `https://codeload.github.com/${user}/${repo}/zip/refs/heads/${branch}`;
+  const zipUrl = `https://codeload.github.com/${user}/${repo}/zip/refs/heads/${branch || 'main'}`;
   console.log('zipped');
   
   try {

@@ -9,7 +9,6 @@ import {
   Calendar,
   Clock,
   Plus,
-  Search,
   RotateCcw,
   Trash,
   Github,
@@ -29,6 +28,7 @@ interface Project {
   deployDate: string;
   buildTime: number;
   created: Date;
+  devTime: number;
 }
 
 export function ProjectDashboard() {
@@ -57,6 +57,23 @@ export function ProjectDashboard() {
       )
     );
   }, [query, projects]);
+
+  function rebuildProject(githubUrl : string){
+    alert("TODO")
+    // const selectedProject = projects.find((p) => p.githubUrl === githubUrl);
+    // if (selectedProject) {
+    //   router.push(
+    //     `/deploy?github=${encodeURIComponent(
+    //       githubUrl
+    //     )}&pn=${encodeURIComponent(
+    //       selectedProject.projectName
+    //     )}&des=${encodeURIComponent(
+    //       selectedProject.description || ""
+    //     )}`
+    //   );
+    // }
+  }
+
   return (
     <div className="xl:max-h-screen mt-8 max-w-[95%] md:max-w-[80%] mb-10 m-auto bg-zinc-950 text-white">
       <div className="max-w-7xl mx-auto pt-20">
@@ -136,7 +153,7 @@ export function ProjectDashboard() {
                           <CardTitle className="text-base font-semibold text-white line-clamp-1">
                             {project.projectName}
                           </CardTitle>
-                          <p className="text-xs text-zinc-400 line-clamp-2">
+                          <p className="text-xs text-zinc-400 line-clamp-1">
                             {project.description}
                           </p>
                         </div>
@@ -152,8 +169,8 @@ export function ProjectDashboard() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-zinc-800/60 rounded-md px-3 py-2">
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="bg-zinc-800/60 col-span-2 rounded-md px-3 py-2">
                         <div className="flex items-center gap-1 mb-0.5">
                           <Calendar className="w-3 h-3 text-zinc-500" />
                           <span className="text-[10px] text-zinc-500">
@@ -168,14 +185,21 @@ export function ProjectDashboard() {
                           })}
                         </div>
                       </div>
-                      <div className="bg-zinc-800/60 rounded-md px-3 py-2">
+                      <div className="bg-zinc-800/60 rounded-md px-3 py-2 col-span-1">
                         <div className="flex items-center gap-1 mb-0.5">
-                          <Clock className="w-3 h-3 text-zinc-500" />
                           <span className="text-[10px] text-zinc-500">
                             Build Time
                           </span>
                         </div>
-                        <p className="text-sm font-medium">{project.buildTime}</p>
+                        <p className="text-sm font-medium">{project.buildTime || -1} s</p>
+                      </div>
+                      <div className="bg-zinc-800/60 rounded-md px-3 py-2 col-span-1">
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className="text-[10px] text-zinc-500">
+                            Build Time
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium">{project.devTime || -1} s </p>
                       </div>
                     </div>
 
@@ -183,7 +207,9 @@ export function ProjectDashboard() {
                       <Button
                         size="sm"
                         className="flex-1 bg-gradient-to-r from-blue-700 to-cyan-700 hover:from-blue-800 hover:to-cyan-800 text-white px-2 py-1 h-7 text-xs"
+                        onClick={() => window.open(project.url, "_blank")}
                       >
+                      
                         <ExternalLink className="h-3 w-3 mr-1" />
                         Visit
                       </Button>
@@ -193,14 +219,23 @@ export function ProjectDashboard() {
                       >
                         <Trash className="w-3 h-3" />
                       </Button>
+                      {
+                        project.githubUrl && (
+                        <Button
+                          size="sm"
+                          onClick={()=> rebuildProject(project.githubUrl!)}
+                          className=" bg-zinc-800 hover:bg-zinc-700 hover:text-white px-2 py-1">
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                        )
+                      }
                       <Button
                         size="sm"
-                        className=" bg-zinc-800 hover:bg-zinc-700 hover:text-white px-2 py-1"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="sm"
+                        onClick={() =>
+                          project.githubUrl
+                            ? window.open(project.githubUrl, "_blank")
+                            : window.open(project.url, "_blank")
+                        }
                         className=" bg-zinc-800 hover:bg-zinc-700 hover:text-white px-2 py-1"
                       >
                         {project.githubUrl ? (

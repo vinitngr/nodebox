@@ -1,7 +1,7 @@
 import { ExportOptions, FileSystemTree, WebContainer } from "@webcontainer/api";
 import { useLogStore } from "@/store/logs";
 import { ContainerFile, Option } from "./types";
-import { Axios } from "axios";
+import { Axios, AxiosError } from "axios";
 import { Terminal } from "@xterm/xterm";
 import { ProjectMetaData } from "./types";
 
@@ -14,7 +14,7 @@ export class hostContainer {
   public containerport: any;
   public root: any;
   public metadata: ProjectMetaData = {};
-  public tml : Terminal | null = null ;
+  public tml: Terminal | null = null;
 
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
@@ -52,26 +52,14 @@ export class hostContainer {
         let res: any;
 
         try {
-          useLogStore
-            .getState()
-            .addLog(
-              "normal",
-              `> git clone --branch ${this.metadata?.branch || "main"
-              } https://github.com/${match[1]}/${match[2]}.git`
-            );
+          useLogStore.getState().addLog("normal",`> git clone --branch ${this.metadata?.branch || "main"} https://github.com/${match[1]}/${match[2]}.git`);
           res = await axios.get(apiUrl, { responseType: "arraybuffer" });
         } catch (error) {
           useLogStore.getState().addLog("error", "Failed to fetch GitHub ZIP");
           throw new Error("error while getting data from github");
         }
 
-        let zip;
-        try {
-          zip = unzipSync(new Uint8Array(res.data));
-        } catch (zipErr) {
-          useLogStore.getState().addLog("error", "Failed to unzip GitHub ZIP");
-          throw new Error("Failed to unzip GitHub ZIP");
-        }
+        let zip = unzipSync(new Uint8Array(res.data));
 
         const containerFiles: ContainerFile | any = {};
 
@@ -90,25 +78,20 @@ export class hostContainer {
           }
 
           const fileName = parts[parts.length - 1];
-          current[fileName] = {
-            file: {
-              contents: strFromU8(content),
-            },
-          };
+          if (/\.(png|jpg|jpeg|gif|webp|svg|mp4|mp3|wav|ogg|pdf|ico)$/i.test(fileName)) {
+            current[fileName] = { file: { contents: content as Uint8Array } };
+          } else {
+            current[fileName] = { file: { contents: strFromU8(content) } };
+          }
         }
         this.containerfiles = containerFiles;
-        useLogStore
-          .getState()
-          .addLog("normal", "success : GitHub repo installed and processed ");
-        await this._addplaceholders(axios);
+        useLogStore.getState().addLog("normal", "success : GitHub repo installed and processed ");
 
+        // await this._addplaceholders(axios);
         return;
       } catch (err) {
-        useLogStore
-          .getState()
-          .addLog("error", "add valid url https://github.com/username/repo");
+        useLogStore.getState().addLog("error", "add valid url https://github.com/username/repo");
         useLogStore.getState().addLog("error", "> Reload Page and try again");
-        // console.error('Unhandled GitHub processing error:', err);
         throw new Error("error while getting data from github");
       }
     }
@@ -136,8 +119,14 @@ export class hostContainer {
           }
 
           const fileName = parts[parts.length - 1];
-          const content = await file.text();
-          current[fileName] = { file: { contents: content } };
+          if (/\.(png|jpg|jpeg|gif|webp|svg|mp4|mp3|wav|ogg|pdf|ico)$/i.test(fileName)) {
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8array = new Uint8Array(arrayBuffer);
+            current[fileName] = { file: { contents: uint8array } };
+          } else {
+            const content = await file.text();
+            current[fileName] = { file: { contents: content } };
+          }
         }
         useLogStore.getState().addLog("normal", `Root file is: ${this.root}`);
 
@@ -173,6 +162,7 @@ export class hostContainer {
   }): Promise<hostContainer> {
     let instance = new hostContainer(input);
     if (input.metadata?.env) instance.metadata.env = input.metadata.env;
+    if (input.metadata?.description) instance.metadata.description = input.metadata.description;
     if (input.metadata?.branch) instance.metadata.branch = input.metadata.branch;
     if (input.metadata?.buildCommand) instance.metadata.buildCommand = input.metadata.buildCommand;
     if (input.metadata?.rundev) instance.metadata.rundev = input.metadata.rundev;
@@ -185,10 +175,8 @@ export class hostContainer {
       });
       instance.wc = wc;
     } catch (error) {
-      useLogStore
-        .getState()
-        .addLog("error", "Error while booting the container");
-      if((error as Error).message = 'Unable to create more instances'){
+      useLogStore.getState().addLog("error", "Error while booting the container");
+      if ((error as Error).message = 'Unable to create more instances') {
         window.location.reload()
       }
       throw error
@@ -236,8 +224,12 @@ export class hostContainer {
       }
 
       try {
+        const timeoutId = setTimeout(() => {
+          console.log("Still installing... check console for logs");
+        }, 60000);
         useLogStore.getState().addLog("normal", "> npm install");
         await this._installDependencies();
+        clearTimeout(timeoutId);
         useLogStore.getState().addLog("normal", "dependencies installed ");
       } catch (error) {
         useLogStore
@@ -311,26 +303,10 @@ export class hostContainer {
     }
   };
 
-  private _StartBuild = async (buildScript : string) => {
-    try {
-      const [command , ...args] = buildScript.split(' ')
-      const buildProcess = await this.wc.spawn(command, args);
-      await buildProcess.output.pipeTo(
-        new WritableStream({
-          write: (data) => {
-            console.log(data);
-          },
-        })
-      );
-      return buildProcess.exit;
-    } catch (err) {
-      throw new Error("Erorr in start build : " + err);
-    }
-  };
-
   public exportFile = async (
-    whatTo: string = "dist",
-    format: ExportOptions["format"] = "zip"
+    whatTo: string = "./dist",
+    format: ExportOptions["format"] = "zip",
+    foldername?: string,
   ) => {
     try {
       const data = await this.wc.export(whatTo, { format });
@@ -341,7 +317,7 @@ export class hostContainer {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${this.root}.${format === "zip" ? "zip" : "json"}`;
+      link.download = `${foldername || this.root}.${format === "zip" ? "zip" : "json"}`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -350,7 +326,7 @@ export class hostContainer {
     }
   };
 
-  public runTerminalCommand = async (input: string , type? : string) => {
+  public runTerminalCommand = async (input: string, type?: string) => {
     try {
       const parts = input.trim().split(" ");
       if (parts.length === 0 || parts[0] === "") return;
@@ -362,9 +338,9 @@ export class hostContainer {
       terminalOutput.output.pipeTo(
         new WritableStream({
           write: (data) => {
-              if (!data.trim()) return;
-              this.tml?.write(data)
-              console.log(data);
+            if (!data.trim()) return;
+            this.tml?.write(data)
+            console.log(data);
           },
         })
       );
@@ -376,7 +352,7 @@ export class hostContainer {
       } else {
         useLogStore.getState().addLog("normal", `terminal command successfull`);
       }
-      return await terminalOutput.exit;
+      return output
     } catch (error) {
       useLogStore.getState().addLog("error", `run terminal internal error`);
       throw (error as Error).message;
@@ -384,23 +360,23 @@ export class hostContainer {
   };
 
   public writeFile = async (filePath: string, content: string) => {
-  const normalized = filePath.replace(/\/+/g, '/'); 
-  const parts = normalized.split('/');
-  const dirs = parts.slice(0, -1);
+    const normalized = filePath.replace(/\/+/g, '/');
+    const parts = normalized.split('/');
+    const dirs = parts.slice(0, -1);
 
-  let current = '';
-  for (const part of dirs) {
-    if (!part) continue;
-    current += '/' + part;
-    try {
-      await this.wc.fs.mkdir(current);
-    } catch (e: any) {
-      if (e?.message?.includes('EEXIST') === false) throw e;
+    let current = '';
+    for (const part of dirs) {
+      if (!part) continue;
+      current += '/' + part;
+      try {
+        await this.wc.fs.mkdir(current);
+      } catch (e: any) {
+        if (e?.message?.includes('EEXIST') === false) throw e;
+      }
     }
-  }
 
-  await this.wc.fs.writeFile(normalized, content, { encoding: 'utf-8' });
-};
+    await this.wc.fs.writeFile(normalized, content, { encoding: 'utf-8' });
+  };
 
 
   public async getFilesName(path: string): Promise<string[]> {
@@ -410,7 +386,7 @@ export class hostContainer {
     const shouldExclude = (name: string) =>
       this.excludePatterns.some((pattern) => pattern.test(name));
 
-    const mediaExts = ["png","jpg","jpeg","gif","webp","bmp","ico","mp4","webm","ogg","mp3","wav","pdf"];
+    const mediaExts = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "ico", "mp4", "webm", "ogg", "mp3", "wav", "pdf"];
 
     const isImageFile = (name: string) => {
       const ext = name.split(".").pop()?.toLowerCase() || "";
@@ -449,7 +425,106 @@ export class hostContainer {
     URL.revokeObjectURL(url);
   }
 
-  public deleteFile(path : string){
-    this.wc.fs.rm( path , { force : true })
+  public deleteFile(path: string) {
+    this.wc.fs.rm(path, { force: true })
+  }
+
+  public async DeployToProduction() {
+    try {
+      useLogStore.getState().addLog("normal", "Building Project...");
+      const start = performance.now();
+      await this.runTerminalCommand(this.metadata.buildCommand || 'npm run build');
+      const buildTime = performance.now() - start;
+      useLogStore.getState().addLog("normal", `Build Time: ${buildTime.toFixed(2)}ms`);
+      this.metadata.buildtime = buildTime
+    } catch (error) {
+      useLogStore.getState().addLog("error", "Error Building project");
+      console.error('Error while building project:', error);
+      return { success: false, error: "Build failed" };
+    }
+
+    try {
+      useLogStore.getState().addLog("normal", "Making files compatible...");
+      await this.parseIndex();
+    } catch (error) {
+      useLogStore.getState().addLog("error", "Error making files compatible");
+      console.error('Error while parsing index:', error);
+      return { success: false, error: "Index parse failed" };
+    }
+
+    try {
+      useLogStore.getState().addLog("normal", "Uploading files to cloud...");
+      await this._filesCloudUpload();
+      return { success: true };
+    } catch (error) {
+      useLogStore.getState().addLog("error", "Error uploading files to cloud");
+      console.error('Error while uploading files:', error);
+      return { success: true };
+    }
+
+  }
+
+  public async parseIndex() {
+    let html = await this.readFile('./dist/index.html');
+    // const buildFolder = folders.find(name =>
+    //   ["dist", "build", "out"].includes(name)
+    // ) || "dist";
+
+    html = html.replace(
+      /(href|src)=["']\/([^"']+)["']/g,
+      (_, attr, path) => `${attr}="./${path}"`
+    );
+    await this.writeFile('./dist/index.html', html)
+    // this.downloadFile('./dist/index.html', html)
+  }
+
+
+  private async _filesCloudUpload() {
+    try {
+      const data = await this.wc.export('./dist', { format: 'zip' });
+
+      if (data.byteLength > 10 * 1024 * 1024) {
+        useLogStore.getState().addLog("error", "File size exceeds limit 10mb");
+        throw new Error("File size exceeds limit 10mb");
+      }
+
+      const blob = new Blob([data], { type: 'application/zip' });
+      const formdata = new FormData();
+      // alert(
+      //   `Project Name: ${this.metadata.projectName}\n` +
+      //   `Description: ${this.metadata.description}\n` +
+      //   `URL: ${this.url}\n` +
+      //   `Build Time: ${this.metadata.buildtime}\n` +
+      //   `Dev Time: ${this.metadata.devtime}`
+      // );
+      formdata.append('file', blob, 'project.zip');
+      formdata.append('buildTime', String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
+      formdata.append('devtime', String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));
+      formdata.append('description', this.metadata.description || '');
+      formdata.append('githubUrl', this.url || '');
+      formdata.append('projectName',this.metadata.projectName!);
+
+      const { default: axios } = await import('axios');
+      const response = await axios.post('/api/uploadToCloud', formdata, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      useLogStore.getState().addLog("normal", `project uploaded successfully ${response.data.url}`);
+
+      console.log('Upload successful:', response.data);
+
+    } catch (error) {
+      const axiosErr = error as AxiosError;
+
+      if (axiosErr.response?.status === 413) {
+        useLogStore.getState().addLog("normal", `vercel error : payload too large`);
+      } else if (axiosErr.response) {
+        useLogStore.getState().addLog("normal", `error : ${axiosErr.response.data}`);
+        alert(axiosErr.response.data || 'Upload failed.');
+      } else {
+        console.error('Upload failed:', error);
+        useLogStore.getState().addLog("normal", `Upload failed due to unknow reason`);
+        alert((error as Error).message || 'Upload failed due to unknown error.');
+      }
+    }
   }
 }

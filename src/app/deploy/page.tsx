@@ -13,16 +13,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload, Download, FolderGit } from "lucide-react"
+import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload, Download, FolderGit, Router, Check } from "lucide-react"
 import { CodeEditor } from "./editor"
 import { hostContainer } from "@/lib/webContainer"
 import { useLogStore } from "@/store/logs"
 import { executeCommand } from "@/lib/utils"
-type DeploymentPhase = "form" | "sandbox" | "deploying"
 import '@xterm/xterm/css/xterm.css';
 import { useSession } from "next-auth/react"
 import SignInPage from "@/components/SignIn"
+import { useRouter, useSearchParams } from "next/navigation"
 
+type DeploymentPhase = "form" | "sandbox" | "deploying"
 
 export default function ProjectDeploy() {
   const [phase, setPhase] = useState<DeploymentPhase>("form")
@@ -48,7 +49,7 @@ export default function ProjectDeploy() {
   const termRef = useRef<HTMLDivElement>(null)
   const { data: session, status } = useSession();
   const logs = useLogStore(s => s.logs)
-
+  const [ProductionDone, setProductionDone] = useState(false)
   useEffect(() => {
     if (host) {
       host.getFilesName('/').then(files => {
@@ -60,16 +61,36 @@ export default function ProjectDeploy() {
   }, [host, refreshKey])
 
 
-  const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const router = useRouter();
+  // const params = useSearchParams()
+
+  // useEffect(() => {
+  //   const github = params?.get("github")
+  //   const projectName = params?.get("projectName")
+  //   const description = params?.get("description")
+
+  //   if(github && projectName){
+  //     setGithubUrl(github)
+  //     setProjectName(projectName)
+  //     setDescription(description || "")
+       
+  //     startSandbox(undefined, github);
+  //     const newParams = new URLSearchParams(params.toString());
+  //     newParams.delete("github")
+  //     router.replace(`${window.location.pathname}`);
+  //   }
+  // } , [params])
+
+  const startSandbox = async (e?: React.MouseEvent<HTMLButtonElement>) => {
     const start = performance.now();
 
     setPhase("sandbox")
     useLogStore.setState({ logs: [] });
     setSandboxReady(false)
-    e.preventDefault()
+    e?.preventDefault?.()
     try {
       let newHost
-      // if (useLogStore.getState().hostOn) window.location.reload()
+      if (useLogStore.getState().hostOn) window.location.reload()
       useLogStore.getState().hostOn = true;
 
 
@@ -77,7 +98,7 @@ export default function ProjectDeploy() {
         newHost = await hostContainer.initialize({
           option: "folder",
           projectName: projectName,
-          metadata: { env: envVars, buildCommand, rundev },
+          metadata: { env: envVars, buildCommand, rundev , description},
           files,
         });
       else if (githubUrl.trim()) {
@@ -86,11 +107,13 @@ export default function ProjectDeploy() {
           option: "github",
           projectName: projectName,
           url: githubUrl,
+          
           metadata: {
             env: envVars,
             branch: customBranch || branch,
             buildCommand,
             rundev,
+            description,
           },
         });
       } else return alert("Please provide either a GitHub URL or a folder");
@@ -102,6 +125,7 @@ export default function ProjectDeploy() {
           setContainerUrl(url)
           setHost(newHost)
           const end = performance.now();
+          newHost.metadata.devtime = (end - start) ;
           setexexecutionTime(end - start);
           console.timeEnd('hostContainer')
         }
@@ -112,32 +136,40 @@ export default function ProjectDeploy() {
     } catch (error) { console.log("Error:", error) }
   }
 
-  const deployToProduction = () => {
-    setPhase("deploying")
+  const deployToProduction = async () => {
+    setProductionDone(false)
+    setPhase("deploying");
+    setTerminalInput("");
     useLogStore.setState({ logs: [] });
+    useLogStore.getState().addLog("normal", "> deploy initialize");
+    try {
+      if (!host) throw new Error("Host is not initialized");
+      const {success} = await host.DeployToProduction();
+      if(success){
+        setProductionDone(true)
+        // window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error deploying to production:", error);
+    }
   }
-
-  // useEffect(() => {
-  //   if (terminalRef.current) {
-  //     terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-  //   }
-  // }, [terminalHistory]);
-
-  // const resetToForm = () => {
-  //   setPhase("form")
-  //   useLogStore.setState({ logs: [] });
-  //   // setTerminalHistory([])
-  //   setSandboxReady(false)
-  // }
+  const downloadFolder = async (path: string) => {
+    if (!host) return;
+    try {
+      await host.exportFile(path, 'zip', projectName);
+    } catch (error) {
+      console.error("Error downloading folder:", error);
+    }
+  }
 
   const handleTerminalKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       if (!host) return;
       if (!host.tml) {
         const tml = new T({
-          convertEol: true,           // Converts \n to \r\n
-          cursorBlink: true,          // Enables blinking cursor
-          disableStdin: false,        // Allows user input if needed
+          convertEol: true,       
+          cursorBlink: true, 
+          disableStdin: false, 
 
         });
 
@@ -155,6 +187,7 @@ export default function ProjectDeploy() {
       setRefreshKey(k => k + 1);
     }
   };
+  
   if (status === 'loading') return null
   return session ? (
     <div className="mt-8 p-1 mb-5  max-w-[95%] md:max-w-[80%] m-auto">
@@ -472,11 +505,13 @@ export default function ProjectDeploy() {
                       {(!sandboxReady || phase !== "sandbox") && (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-white z-10">
                           <div className="text-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
+                            {
+                              ProductionDone ? <Button className="m-3" variant={"default"} onClick={() => router.push('/dashboard')}>Go To dashboard</Button> : <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
+                            }
                             <p className="text-zinc-400">
                               {phase === "sandbox"
                                 ? "Loading sandbox..."
-                                : "Deploying to production..."}
+                                : ProductionDone ? <div className="flex gap-2 items-center "><div>"Deployed to production"</div> <Check/></div> : "Deploying to production..."}
                             </p>
                           </div>
                         </div>
@@ -546,12 +581,12 @@ export default function ProjectDeploy() {
                         </div>
                       )}
 
-                      {phase === "deploying" && (
+                      {phase === "deploying" && !ProductionDone && (
                         <div className="flex items-center gap-2 text-yellow-400">
                           <div className="animate-pulse">●</div>
                           <span>Deploying...</span>
                         </div>
-                      )}
+                      )}  
 
                       <div className="relative w-full flex flex-col">
                         {sandboxReady && phase === "sandbox" && (
@@ -636,14 +671,22 @@ export default function ProjectDeploy() {
 
                       <div className="flex flex-col gap-3">
                         <div className="flex w-full gap-2">
-                          <Button className="bg-zinc-800 flex-1 text-white">
-                            Build
+                          <Button
+                            onClick={() => {
+                              host?.runTerminalCommand(`${buildCommand}`)
+                            }}
+                            className="bg-zinc-800 flex-1 text-white">
+                            Build Command
                           </Button>
-                          <Button className="bg-zinc-800 text-white">
+                          <Button className="bg-zinc-800 text-white"
+                          onClick={() => downloadFolder('./dist')}
+                          >
                             <Download className="h-4 w-4 mr-2" />
-                            Build
+                            Dist
                           </Button>
-                          <Button className="bg-zinc-800 text-white">
+                          <Button className="bg-zinc-800 text-white"
+                          onClick={() => downloadFolder('./')}
+                          >
                             <Download className="h-4 w-4 mr-2" />
                             Root
                           </Button>

@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
         githubUrl: projectsTable.githubUrl,
         description: projectsTable.description,
         buildTime: projectsTable.buildTime,
+        devTime: projectsTable.devTime,
         created: projectsTable.created_at
       })
       .from(projectsTable)
