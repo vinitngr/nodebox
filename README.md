@@ -1,3 +1,6 @@
+
+![Screenshot](public/bolt.png)
+
 # NodeBox 🧰⚡️  
 **Project Submission for BOTL.new Hackathon**
 
