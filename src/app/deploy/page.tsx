@@ -50,6 +50,11 @@ export default function ProjectDeploy() {
   const { data: session, status } = useSession();
   const logs = useLogStore(s => s.logs)
   const [ProductionDone, setProductionDone] = useState(false)
+
+  useEffect(() => {
+    document.title = 'Nodebox | Deploy';
+  }, []);
+  
   useEffect(() => {
     if (host) {
       host.getFilesName('/').then(files => {

@@ -196,7 +196,7 @@ export function ProjectDashboard() {
                       <div className="bg-zinc-800/60 rounded-md px-3 py-2 col-span-1">
                         <div className="flex items-center gap-1 mb-0.5">
                           <span className="text-[10px] text-zinc-500">
-                            Build Time
+                            Dev Time
                           </span>
                         </div>
                         <p className="text-sm font-medium">{project.devTime || -1} s </p>

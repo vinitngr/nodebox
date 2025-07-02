@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { ProjectCard } from "@/components/CommunityCard";
 import { Plus } from "lucide-react";
+import Head from "next/head";
 
 interface Project {
   id: number;
@@ -22,6 +23,10 @@ function App() {
     setIsMounted(true);
   }, []);
 
+  useEffect(() => {
+    document.title = 'Nodebox | Explore';
+  }, []);
+  
   const fetchProjects = async () => {
     setLoading(true);
     try {

@@ -23,7 +23,7 @@ export default function HomePage() {
     >
 
 
-      <section className="relative pt-34 sm:h-screen flex items-center justify-center sm:pt-15 px-4">
+      <section className="relative sm:pt-20  sm:h-screen flex items-center justify-center  px-4">
         <div className="max-w-5xl mx-auto text-center ">
           {/* Badge */}
           <Badge className="mb-6 bg-blue-500/10 translate-y-5 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">

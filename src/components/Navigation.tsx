@@ -17,7 +17,7 @@ export function Navigation() {
   const head = useRouter().push;
   const pathname = usePathname();
   useEffect(() => {
-    fetch("https://api.github.com/repos/HostThrough/hostthrough")
+    fetch("https://api.github.com/repos/vinitngr/nodebox")
       .then((res) => res.json())
       .then((data) => setStars(data.stargazers_count))
       .catch(() => setStars(null));
@@ -88,7 +88,7 @@ console.log(session);
               className="text-zinc-400 hover:text-white hover:bg-zinc-900  font-mono flex items-center"
               onClick={() =>
                 window.open(
-                  "https://github.com/HostThrough/hostthrough/stargazers",
+                  "https://github.com/vinitngr/nodebox",
                   "_blank"
                 )
               }
