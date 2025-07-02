@@ -1,0 +1,9 @@
+name = "createwrangler"
+main = "src/index.js"
+compatibility_date = "2025-06-20"
+
+[observability]
+enabled = true
+
+[vars]
+CLOUDFRONT_URL='https://d25121adlvheae.cloudfront.net'

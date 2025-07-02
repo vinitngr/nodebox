@@ -23,10 +23,10 @@ export default function HomePage() {
     >
 
 
-      <section className="relative sm:pt-20  sm:h-screen flex items-center justify-center  px-4">
+      <section className="relative sm:pt-15 pt-34  sm:h-screen flex items-center justify-center  px-4">
         <div className="max-w-5xl mx-auto text-center ">
           {/* Badge */}
-          <Badge className="mb-6 bg-blue-500/10 translate-y-5 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">
+          <Badge className="mb-6 bg-blue-500/10 sm:translate-y-5 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">
             <Sparkles className="h-3 w-3 mr-1 " />
             Built with 
             <span className="text-lg bg-gradient-to-r from-pink-500 to-blue-600 bg-clip-text text-transparent font-bold">Bolt.new</span>
