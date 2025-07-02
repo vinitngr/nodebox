@@ -95,8 +95,8 @@ export default function ProjectDeploy() {
     e?.preventDefault?.()
     try {
       let newHost
-      if (useLogStore.getState().hostOn) window.location.reload()
-      useLogStore.getState().hostOn = true;
+      // if (useLogStore.getState().hostOn) window.location.reload()
+      // useLogStore.getState().hostOn = true;
 
 
       if (files?.length)

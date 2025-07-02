@@ -5,6 +5,12 @@ import { Axios, AxiosError } from "axios";
 import { Terminal } from "@xterm/xterm";
 import { ProjectMetaData } from "./types";
 
+declare global {
+  interface Window {
+    webcontainerRunning?: boolean;
+  }
+}
+
 export class hostContainer {
   private containerfiles: ContainerFile = {};
   public url?: string | undefined;
@@ -170,15 +176,18 @@ export class hostContainer {
     useLogStore.getState().addLog("normal", "project initialized: ");
     try {
       useLogStore.getState().addLog("normal", "spining container...");
+      if(window.webcontainerRunning){
+        if (confirm("A webcontainer is already running, want to reload?")) {
+          window.location.reload();
+        }
+      }
       const wc = await WebContainer.boot({
         workdirName: this.getSlug(input.projectName, ""),
       });
+      window.webcontainerRunning = true;
       instance.wc = wc;
     } catch (error) {
       useLogStore.getState().addLog("error", "Error while booting the container");
-      if ((error as Error).message = 'Unable to create more instances') {
-        window.location.reload()
-      }
       throw error
     }
     //important
