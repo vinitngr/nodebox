@@ -1,9 +1,4 @@
-const BLOCKED = new Set([
-  "portfolio",
-  "netlify",
-  "pages",
-  "www",
-]);
+
 
 const ERROR_PAGE = `<!DOCTYPE html>
 <html lang="en">
@@ -33,10 +28,6 @@ export default {
       const parts = url.hostname.split('.');
       const subdomain = parts.length > 2 ? parts[0].toLowerCase() : "portfolio";
       const path = url.pathname === "/" ? "/index.html" : url.pathname;
-
-      if (BLOCKED.has(subdomain)) {
-        return new Response("Access Denied", { status: 403 });
-      }
 
       const targetUrl = `${env.CLOUDFRONT_URL}/${subdomain}${path}`;
       const resp = await fetch(targetUrl, {
