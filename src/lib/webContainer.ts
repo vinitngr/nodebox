@@ -176,17 +176,15 @@ export class hostContainer {
     useLogStore.getState().addLog("normal", "project initialized: ");
     try {
       useLogStore.getState().addLog("normal", "spining container...");
-      if(window.webcontainerRunning){
-        if (confirm("A webcontainer is already running, want to reload?")) {
-          window.location.reload();
-        }
-      }
       const wc = await WebContainer.boot({
         workdirName: this.getSlug(input.projectName, ""),
       });
-      window.webcontainerRunning = true;
+      
       instance.wc = wc;
     } catch (error) {
+      if (confirm("A webcontainer is already running, want to reload?")) {
+        window.location.reload();
+      }
       useLogStore.getState().addLog("error", "Error while booting the container");
       throw error
     }
