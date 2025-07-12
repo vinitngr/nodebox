@@ -3,6 +3,8 @@ import React, { useEffect, useState } from "react";
 import { ProjectCard } from "@/components/CommunityCard";
 import { Plus } from "lucide-react";
 import Head from "next/head";
+import { useLogStore } from "@/store/logs";
+import { ProjectMetaData } from "@/lib/types";
 
 interface Project {
   id: number;
@@ -24,18 +26,24 @@ function App() {
   }, []);
 
   useEffect(() => {
-    document.title = 'Nodebox | Explore';
+    document.title = "Nodebox | Explore";
   }, []);
-  
+
   const fetchProjects = async () => {
-    setLoading(true);
+    const store = useLogStore.getState();
     try {
-      const res = await fetch(
-        `/api/getProjects?start=${range.start}&end=${range.end}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch projects");
-      const data = await res.json();
-      setProjects((prev) => [...prev, ...data.projects]);
+      setLoading(true);
+      if (store._explore.length === 0) {
+        const res = await fetch(
+          `/api/getProjects?start=${range.start}&end=${range.end}`
+        );
+        if (!res.ok) throw new Error("Failed to fetch projects");
+        const data = await res.json();
+        store._explore = data.projects;
+        setProjects((prev) => [...prev, ...data.projects]);
+      } else {
+        setProjects(store._explore as Project[]);
+      }
     } catch (e: any) {
       console.log(e);
     } finally {
@@ -54,12 +62,16 @@ function App() {
     const nextStart = range.end + 1;
     const nextEnd = nextStart + 9;
     setRange({ start: nextStart, end: nextEnd });
+
     fetch(`/api/getProjects?start=${nextStart}&end=${nextEnd}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch more projects");
         return res.json();
       })
-      .then((data) => setProjects((prev) => [...prev, ...data.projects]))
+      .then((data) => {
+        const store = useLogStore.getState();
+        store._explore = [...store._explore, ...data.projects];
+      })
       .catch((e) => console.log(e));
   };
 
@@ -79,11 +91,9 @@ function App() {
           invisible
         </h1>
         <div
-          className=" h-96  bg-zinc-900/50 m-auto mb-6 rounded-md flex items-center  text-white text-xl font-semibold shadow-lg"
+          className="h-96 bg-zinc-900/50 m-auto mb-6 rounded-md flex items-center text-white text-xl font-semibold shadow-lg"
           style={{
-            backgroundImage: `url(/cover${
-              Math.floor(Math.random() * 2) + 2
-            }.jpg)`,
+            backgroundImage: `url(/cover2.jpg)`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -116,12 +126,12 @@ function App() {
 
         <div className="flex justify-center  mt-20">
           <button
-            onClick={loadMore}   
+            onClick={loadMore}
             disabled={loading}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600  px-2 py-1 rounded-full font-semibold text-xs cursor-pointer"
           >
             Load More
-          </button> 
+          </button>
         </div>
       </div>
     </div>

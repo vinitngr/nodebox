@@ -6,7 +6,9 @@ export type Log = {
 export type LogStore = {
   logs: Log[];
   addLog: (type: Log['type'], msg: string) => void;
-  hostOn : boolean
+  hostOn : boolean,
+  _projects: ProjectMetaData[],
+  _explore: ProjectMetaData[],
 };
 
 export interface ContainerFile {

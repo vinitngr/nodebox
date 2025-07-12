@@ -16,6 +16,8 @@ export function Navigation() {
   const [stars, setStars] = useState<number | null>(null);
   const head = useRouter().push;
   const pathname = usePathname();
+
+  
   useEffect(() => {
     fetch("https://api.github.com/repos/vinitngr/nodebox")
       .then((res) => res.json())
@@ -25,7 +27,8 @@ export function Navigation() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { data: session } = useSession();
-console.log(session);
+
+
   const btnClass = (path: string) =>
     `font-mono transition-colors cursor-pointer ${
       pathname === path

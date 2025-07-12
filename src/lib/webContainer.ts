@@ -21,7 +21,7 @@ export class hostContainer {
   public root: any;
   public metadata: ProjectMetaData = {};
   public tml: Terminal | null = null;
-
+  static containerInstance : null | hostContainer = null;
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
       throw new Error("Option is required");
@@ -174,6 +174,7 @@ export class hostContainer {
     if (input.metadata?.rundev) instance.metadata.rundev = input.metadata.rundev;
     instance.metadata.projectName = input.projectName;
     useLogStore.getState().addLog("normal", "project initialized: ");
+    if (this.containerInstance) return this.containerInstance;
     try {
       useLogStore.getState().addLog("normal", "spining container...");
       const wc = await WebContainer.boot({
@@ -181,8 +182,9 @@ export class hostContainer {
       });
       
       instance.wc = wc;
+      this.containerInstance = instance
     } catch (error) {
-      if (confirm("A webcontainer is already running, want to reload?")) {
+      if (confirm((error as Error).message)) {
         window.location.reload();
       }
       useLogStore.getState().addLog("error", "Error while booting the container");

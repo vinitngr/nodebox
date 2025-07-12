@@ -65,34 +65,15 @@ export default function ProjectDeploy() {
     }
   }, [host, refreshKey])
 
-
   const router = useRouter();
-  // const params = useSearchParams()
 
-  // useEffect(() => {
-  //   const github = params?.get("github")
-  //   const projectName = params?.get("projectName")
-  //   const description = params?.get("description")
-
-  //   if(github && projectName){
-  //     setGithubUrl(github)
-  //     setProjectName(projectName)
-  //     setDescription(description || "")
-       
-  //     startSandbox(undefined, github);
-  //     const newParams = new URLSearchParams(params.toString());
-  //     newParams.delete("github")
-  //     router.replace(`${window.location.pathname}`);
-  //   }
-  // } , [params])
-
-  const startSandbox = async (e?: React.MouseEvent<HTMLButtonElement>) => {
+  const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const start = performance.now();
 
     setPhase("sandbox")
     useLogStore.setState({ logs: [] });
     setSandboxReady(false)
-    e?.preventDefault?.()
+    e.preventDefault?.()
     try {
       let newHost
       // if (useLogStore.getState().hostOn) window.location.reload()
@@ -129,6 +110,7 @@ export default function ProjectDeploy() {
           setSandboxReady(true)
           setContainerUrl(url)
           setHost(newHost)
+         
           const end = performance.now();
           newHost.metadata.devtime = (end - start) ;
           setexexecutionTime(end - start);

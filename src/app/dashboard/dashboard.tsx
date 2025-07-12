@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useLogStore } from "@/store/logs";
 
 interface Project {
   id: number;
@@ -41,14 +42,28 @@ export function ProjectDashboard() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    import("axios").then(({ default: axios }) => {
-      axios
-        .get("/api/userProjects")
-        .then((res) => setProjects(res.data.projects))
-        .catch((e) => console.log(e))
-        .finally(() => setLoading(false));
-    });
+    const store = useLogStore.getState();
+    if (store._projects.length === 0) {
+      import("axios").then(({ default: axios }) => {
+        const axiosInstance = axios.create({
+          baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api", 
+        })
+        axiosInstance
+          .get("/userProjects")
+          .then((res) => {
+            const projects = res.data.projects || [];
+            setProjects(projects);
+            store._projects = projects;
+          })
+          .catch((e) => console.log(e))
+          .finally(() => setLoading(false));
+      });
+    } else {
+      setProjects(store._projects as Project[]);
+      setLoading(false);
+    }
   }, []);
+
 
   useEffect(() => {
     setFilteredProjects(
