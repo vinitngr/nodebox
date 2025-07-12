@@ -45,11 +45,8 @@ export function ProjectDashboard() {
     const store = useLogStore.getState();
     if (store._projects.length === 0) {
       import("axios").then(({ default: axios }) => {
-        const axiosInstance = axios.create({
-          baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api", 
-        })
-        axiosInstance
-          .get("/userProjects")
+        axios
+          .get("/api/userProjects")
           .then((res) => {
             const projects = res.data.projects || [];
             setProjects(projects);
