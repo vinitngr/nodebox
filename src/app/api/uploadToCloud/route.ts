@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
 
     await db.insert(projectsTable).values([{
       projectName: projectName,
-      url: `https://${projectName}.vinitngr.xyz`,
+      url: `http://${projectName}.nodebox.vinitngr.xyz`,
       description: formData.get('description') as string | undefined,
       githubUrl: formData.get('githubUrl') as string | undefined,
       buildTime: Math.round(Number(formData.get('buildtime')) || -1),
