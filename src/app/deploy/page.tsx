@@ -19,18 +19,18 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-Upload,
-Github,
-Folder,
-Terminal,
-Play,
-Settings,
-Code,
-Zap,
-Monitor,
-CloudUpload,
-Download,
-Check,
+  Upload,
+  Github,
+  Folder,
+  Terminal,
+  Play,
+  Settings,
+  Code,
+  Zap,
+  Monitor,
+  CloudUpload,
+  Download,
+  Check,
 } from "lucide-react";
 import { CodeEditor } from "./editor";
 import { hostContainer } from "@/lib/webContainer";
@@ -484,11 +484,10 @@ export default function ProjectDeploy() {
                     }
                   >
                     {sandboxReady && phase === "sandbox"
-                      ? `ready ${
-                          executionTime
-                            ? ` (${Math.round(executionTime / 1000)} s)`
-                            : ""
-                        }`
+                      ? `ready ${executionTime
+                        ? ` (${Math.round(executionTime / 1000)} s)`
+                        : ""
+                      }`
                       : "Loading..."}
                   </Badge>
                 </CardHeader>
@@ -513,11 +512,12 @@ export default function ProjectDeploy() {
                             {ProductionDone ? (
                               <Button
                                 className="m-3"
-                                variant={"default"}
-                                onClick={() => router.push("/dashboard")}
+                                variant="default"
+                                onClick={() => window.location.assign("/dashboard")}
                               >
                                 Go To dashboard
                               </Button>
+
                             ) : (
                               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
                             )}
@@ -576,16 +576,16 @@ export default function ProjectDeploy() {
                           <span
                             className={
                               log.msg.includes("error") ||
-                              log.msg.includes("Error") ||
-                              log.msg.includes("Failed")
+                                log.msg.includes("Error") ||
+                                log.msg.includes("Failed")
                                 ? "text-red-400"
                                 : log.msg.includes("success") ||
                                   log.msg.includes("🎉") ||
                                   log.msg.includes("🚀")
-                                ? "text-green-400"
-                                : log.msg.startsWith(">")
-                                ? "text-blue-400"
-                                : "text-zinc-300"
+                                  ? "text-green-400"
+                                  : log.msg.startsWith(">")
+                                    ? "text-blue-400"
+                                    : "text-zinc-300"
                             }
                           >
                             {log.msg}
