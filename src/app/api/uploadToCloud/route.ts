@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       .where(eq(projectsTable.email, session.user.email))
 
     const isDev = process.env.ENV === "development";
-    if(count > 5 && !isDev) {
+    if(count > 5 && !isDev && session.user.email !== "vinitnagar56@gmail.com") {
       return new Response("You have reached the limit of 5 projects", { status: 403 });
     }
 
@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
 
     await db.insert(projectsTable).values([{
       projectName: finalName,
-      url: `http://${projectName}.nodebox.vinitngr.xyz`,
+      url: `http://${finalName}.nodebox.vinitngr.xyz`,
       description: formData.get('description') as string | undefined,
       githubUrl: formData.get('githubUrl') as string | undefined,
       buildTime: Math.round(Number(formData.get('buildtime')) || -1),
@@ -137,8 +137,8 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         finalName,
-        cdnUrl: `https://d25121adlvheae.cloudfront.net/uploads/${projectName}/index.html`,
-        url: `https://${projectName}.vinitngr.xyz`,
+        cdnUrl: `https://d25121adlvheae.cloudfront.net/uploads/${finalName}/index.html`,
+        url: `https://${finalName}.vinitngr.xyz`,
       },
       { status: 200 }
     );

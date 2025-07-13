@@ -568,23 +568,11 @@ export class hostContainer {
       //   `Build Time: ${this.metadata.buildtime}\n` +
       //   `Dev Time: ${this.metadata.devtime}`
       // );
+      console.log(blob);
       formdata.append("file", blob, "project.zip");
       formdata.append("media", (this.mediaZipBlob as Blob) , "media.zip");
-      formdata.append(
-        "buildTime",
-        String(
-          (this.metadata.buildtime
-            ? this.metadata.buildtime / 1000
-            : -1
-          ).toFixed(0)
-        )
-      );
-      formdata.append(
-        "devtime",
-        String(
-          (this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)
-        )
-      );
+      formdata.append("buildTime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1 ).toFixed(0)));
+      formdata.append("devtime", String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));
       formdata.append("description", this.metadata.description || "");
       formdata.append("githubUrl", this.url || "");
       formdata.append("projectName", this.metadata.projectName!);
@@ -593,11 +581,9 @@ export class hostContainer {
       const response = await axios.post("/api/uploadToCloud", formdata, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      useLogStore
-        .getState()
-        .addLog("normal", `project uploaded successfully ${response.data.url}`);
+      useLogStore.getState().addLog("normal", `project uploaded successfully ${response.data.url}`);
 
-      console.log("Upload successful:", response.data);
+      // console.log("Upload successful:", response.data);
     } catch (error) {
       const axiosErr = error as AxiosError;
 
