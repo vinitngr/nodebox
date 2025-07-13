@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
       .from(projectsTable)
       .where(eq(projectsTable.email, session.user.email))
 
-    
-    if(count > 5){
+    const isDev = process.env.ENV === "development";
+    if(count > 5 && !isDev) {
       return new Response("You have reached the limit of 5 projects", { status: 403 });
     }
 
@@ -95,8 +95,35 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const media = formData.get('media');
+    const mediaBuffer = Buffer.from(await (media as Blob).arrayBuffer());
+    const mediazip = unzipSync(mediaBuffer);
+    for (const [fn, content] of Object.entries(mediazip)) {
+      try {
+        console.log('Uploading:', fn);
+        // const relativePath = path.startsWith('dist/') ? path.slice(5) : path;
+        // if (!relativePath || relativePath.endsWith('/')) continue;
+
+        const key = `uploads/${finalName}/${fn}`;
+        const contentType = mime.getType(fn) || 'application/octet-stream';
+
+        const command = new PutObjectCommand({
+          Bucket: process.env.BUCKET_NAME!,
+          Key: key,
+          Body: content,
+          ContentType: contentType,
+          CacheControl: 'public, max-age=864000, immutable',
+        });
+
+        await s3.send(command);
+      } catch (error) {
+        console.error('Upload failed for', fn, error);
+        throw new Error(`Upload failed for ${fn}: ${error}`);
+      }
+    }
+
     await db.insert(projectsTable).values([{
-      projectName: projectName,
+      projectName: finalName,
       url: `http://${projectName}.nodebox.vinitngr.xyz`,
       description: formData.get('description') as string | undefined,
       githubUrl: formData.get('githubUrl') as string | undefined,
@@ -109,7 +136,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        projectName,
+        finalName,
         cdnUrl: `https://d25121adlvheae.cloudfront.net/uploads/${projectName}/index.html`,
         url: `https://${projectName}.vinitngr.xyz`,
       },

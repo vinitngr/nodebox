@@ -1,90 +1,110 @@
 "use client"
+import React from "react";
+import { Terminal as T } from "@xterm/xterm";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+Upload,
+Github,
+Folder,
+Terminal,
+Play,
+Settings,
+Code,
+Zap,
+Monitor,
+CloudUpload,
+Download,
+Check,
+} from "lucide-react";
+import { CodeEditor } from "./editor";
+import { hostContainer } from "@/lib/webContainer";
+import { useLogStore } from "@/store/logs";
+import { executeCommand } from "@/lib/utils";
+import "@xterm/xterm/css/xterm.css";
+import { useSession } from "next-auth/react";
+import SignInPage from "@/components/SignIn";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import React from "react"
-import { Terminal as T } from '@xterm/xterm'
-import { useEffect, useRef, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Upload, Github, Folder, Terminal, Play, Settings, Code, Zap, Monitor, CloudUpload, Download, FolderGit, Router, Check } from "lucide-react"
-import { CodeEditor } from "./editor"
-import { hostContainer } from "@/lib/webContainer"
-import { useLogStore } from "@/store/logs"
-import { executeCommand } from "@/lib/utils"
-import '@xterm/xterm/css/xterm.css';
-import { useSession } from "next-auth/react"
-import SignInPage from "@/components/SignIn"
-import { useRouter, useSearchParams } from "next/navigation"
-
-type DeploymentPhase = "form" | "sandbox" | "deploying"
+type DeploymentPhase = "form" | "sandbox" | "deploying";
 
 export default function ProjectDeploy() {
-  const [phase, setPhase] = useState<DeploymentPhase>("form")
-  const [sourceType, setSourceType] = useState<"github" | "folder">("github")
-  const [projectName, setProjectName] = useState("")
-  const [description, setDescription] = useState("")
-  const [githubUrl, setGithubUrl] = useState("")
-  const [branch, setBranch] = useState("main")
-  const [customBranch, setCustomBranch] = useState("")
-  const [buildCommand, setBuildCommand] = useState("npm run build")
-  const [rundev, setRundev] = useState("npm run dev")
-  const [envVars, setEnvVars] = useState("")
-  const [terminalInput, setTerminalInput] = useState("")
-  const [sandboxReady, setSandboxReady] = useState(false)
+  const [phase, setPhase] = useState<DeploymentPhase>("form");
+  const [sourceType, setSourceType] = useState<"github" | "folder">("github");
+  const [projectName, setProjectName] = useState("");
+  const [description, setDescription] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
+  const [branch, setBranch] = useState("main");
+  const [customBranch, setCustomBranch] = useState("");
+  const [buildCommand, setBuildCommand] = useState("npm run build");
+  const [rundev, setRundev] = useState("npm run dev");
+  const [envVars, setEnvVars] = useState("");
+  const [terminalInput, setTerminalInput] = useState("");
+  const [sandboxReady, setSandboxReady] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
-  const folderRef = useRef<HTMLInputElement>(null)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const folderRef = useRef<HTMLInputElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [containerUrl, setContainerUrl] = useState<string | undefined>();
   const [host, setHost] = useState<hostContainer | null>(null);
-  const [availableFiles, setavailableFiles] = useState<string[]>([])
-  const [executionTime, setexexecutionTime] = useState<number | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const termRef = useRef<HTMLDivElement>(null)
+  const [availableFiles, setavailableFiles] = useState<string[]>([]);
+  const [executionTime, setexexecutionTime] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const termRef = useRef<HTMLDivElement>(null);
   const { data: session, status } = useSession();
-  const logs = useLogStore(s => s.logs)
-  const [ProductionDone, setProductionDone] = useState(false)
+  const logs = useLogStore((s) => s.logs);
+  const [ProductionDone, setProductionDone] = useState(false);
 
   useEffect(() => {
-    document.title = 'Nodebox | Deploy';
+    document.title = "Nodebox | Deploy";
   }, []);
-  
+
   useEffect(() => {
     if (host) {
-      host.getFilesName('/').then(files => {
-        setavailableFiles(files)
-      }).catch(err => {
-        console.error("Error fetching root files:", err);
-      })
+      host
+        .getFilesName("/")
+        .then((files) => {
+          setavailableFiles(files);
+        })
+        .catch((err) => {
+          console.error("Error fetching root files:", err);
+        });
     }
-  }, [host, refreshKey])
+  }, [host, refreshKey]);
 
   const router = useRouter();
 
   const startSandbox = async (e: React.MouseEvent<HTMLButtonElement>) => {
     const start = performance.now();
 
-    setPhase("sandbox")
+    setPhase("sandbox");
     useLogStore.setState({ logs: [] });
-    setSandboxReady(false)
-    e.preventDefault?.()
+    setSandboxReady(false);
+    e.preventDefault?.();
     try {
-      let newHost
+      let newHost;
       // if (useLogStore.getState().hostOn) window.location.reload()
       // useLogStore.getState().hostOn = true;
-
 
       if (files?.length)
         newHost = await hostContainer.initialize({
           option: "folder",
           projectName: projectName,
-          metadata: { env: envVars, buildCommand, rundev , description},
+          metadata: { env: envVars, buildCommand, rundev, description },
           files,
         });
       else if (githubUrl.trim()) {
@@ -93,7 +113,7 @@ export default function ProjectDeploy() {
           option: "github",
           projectName: projectName,
           url: githubUrl,
-          
+
           metadata: {
             env: envVars,
             branch: customBranch || branch,
@@ -104,78 +124,76 @@ export default function ProjectDeploy() {
         });
       } else return alert("Please provide either a GitHub URL or a folder");
 
-      newHost.wc.on('server-ready', (port, url) => {
+      newHost.wc.on("server-ready", (port, url) => {
         if (iframeRef.current) {
-          console.log('hi this is ready');
-          setSandboxReady(true)
-          setContainerUrl(url)
-          setHost(newHost)
-         
+          console.log("hi this is ready");
+          setSandboxReady(true);
+          setContainerUrl(url);
+          setHost(newHost);
+
           const end = performance.now();
-          newHost.metadata.devtime = (end - start) ;
+          newHost.metadata.devtime = end - start;
           setexexecutionTime(end - start);
-          console.timeEnd('hostContainer')
+          console.timeEnd("hostContainer");
         }
-      })
-      await newHost.getTheWorkDone()
-      setHost(newHost)
-      setSandboxReady(true)
-    } catch (error) { console.log("Error:", error) }
-  }
+      });
+      await newHost.getTheWorkDone();
+      setHost(newHost);
+      setSandboxReady(true);
+    } catch (error) {
+      console.log("Error:", error);
+    }
+  };
 
   const deployToProduction = async () => {
-    setProductionDone(false)
+    setProductionDone(false);
     setPhase("deploying");
     setTerminalInput("");
     useLogStore.setState({ logs: [] });
     useLogStore.getState().addLog("normal", "> deploy initialize");
     try {
       if (!host) throw new Error("Host is not initialized");
-      const {success} = await host.DeployToProduction();
-      if(success){
-        setProductionDone(true)
-        // window.location.reload();
+      const { success } = await host.DeployToProduction();
+      if (success) {
+        setProductionDone(true);
+      } else {
+        const retry = confirm("Deployment failed : Not a Vite project . Go back to sandbox?");
+        if (retry) setPhase("sandbox");
       }
     } catch (error) {
       console.error("Error deploying to production:", error);
     }
-  }
+  };
   const downloadFolder = async (path: string) => {
     if (!host) return;
     try {
-      await host.exportFile(path, 'zip', projectName);
+      await host.exportFile(path, "zip", projectName);
     } catch (error) {
       console.error("Error downloading folder:", error);
     }
-  }
+  };
 
   const handleTerminalKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       if (!host) return;
       if (!host.tml) {
         const tml = new T({
-          convertEol: true,       
-          cursorBlink: true, 
-          disableStdin: false, 
-
+          convertEol: true,
+          cursorBlink: true,
+          disableStdin: false,
         });
 
         if (termRef.current) tml.open(termRef.current as HTMLDivElement);
         host.tml = tml;
       }
 
-      executeCommand(
-        terminalInput,
-        host,
-        projectName,
-        setTerminalInput
-      );
+      executeCommand(terminalInput, host, projectName, setTerminalInput);
 
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
     }
   };
-  
-  if (status === 'loading') return null
+
+  if (status === "loading") return null;
   return session ? (
     <div className="mt-8 p-1 mb-5  max-w-[95%] md:max-w-[80%] m-auto">
       <div className="max-w-7xl pt-20 mx-auto">
@@ -492,13 +510,27 @@ export default function ProjectDeploy() {
                       {(!sandboxReady || phase !== "sandbox") && (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-white z-10">
                           <div className="text-center">
-                            {
-                              ProductionDone ? <Button className="m-3" variant={"default"} onClick={() => router.push('/dashboard')}>Go To dashboard</Button> : <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
-                            }
+                            {ProductionDone ? (
+                              <Button
+                                className="m-3"
+                                variant={"default"}
+                                onClick={() => router.push("/dashboard")}
+                              >
+                                Go To dashboard
+                              </Button>
+                            ) : (
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4" />
+                            )}
                             <p className="text-zinc-400">
-                              {phase === "sandbox"
-                                ? "Loading sandbox..."
-                                : ProductionDone ? <div className="flex gap-2 items-center "><div>"Deployed to production"</div> <Check/></div> : "Deploying to production..."}
+                              {phase === "sandbox" ? (
+                                "Loading sandbox..."
+                              ) : ProductionDone ? (
+                                <div className="flex gap-2 items-center ">
+                                  <div>"Deployed to production"</div> <Check />
+                                </div>
+                              ) : (
+                                "Deploying to production..."
+                              )}
                             </p>
                           </div>
                         </div>
@@ -573,7 +605,7 @@ export default function ProjectDeploy() {
                           <div className="animate-pulse">●</div>
                           <span>Deploying...</span>
                         </div>
-                      )}  
+                      )}
 
                       <div className="relative w-full flex flex-col">
                         {sandboxReady && phase === "sandbox" && (
@@ -660,19 +692,22 @@ export default function ProjectDeploy() {
                         <div className="flex w-full gap-2">
                           <Button
                             onClick={() => {
-                              host?.runTerminalCommand(`${buildCommand}`)
+                              host?.runTerminalCommand(`${buildCommand}`);
                             }}
-                            className="bg-zinc-800 flex-1 text-white">
+                            className="bg-zinc-800 flex-1 text-white"
+                          >
                             Build Command
                           </Button>
-                          <Button className="bg-zinc-800 text-white"
-                          onClick={() => downloadFolder('./dist')}
+                          <Button
+                            className="bg-zinc-800 text-white"
+                            onClick={() => downloadFolder("./dist")}
                           >
                             <Download className="h-4 w-4 mr-2" />
                             Dist
                           </Button>
-                          <Button className="bg-zinc-800 text-white"
-                          onClick={() => downloadFolder('./')}
+                          <Button
+                            className="bg-zinc-800 text-white"
+                            onClick={() => downloadFolder("./")}
                           >
                             <Download className="h-4 w-4 mr-2" />
                             Root
