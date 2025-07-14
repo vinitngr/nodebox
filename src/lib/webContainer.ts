@@ -22,7 +22,7 @@ export class hostContainer {
   public metadata: ProjectMetaData = {};
   public tml: Terminal | null = null;
   static containerInstance: null | hostContainer = null;
-  public mediaZipBlob : Blob | null = null
+  // public mediaZipBlob: Blob | null = null
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
       throw new Error("Option is required");
@@ -41,7 +41,7 @@ export class hostContainer {
 
     if (this.option === "github" && this.url) {
       const axios = (await import("axios")).default;
-      const { unzipSync , zipSync } = await import("fflate");
+      const { unzipSync, zipSync } = await import("fflate");
 
       try {
         const match = this.url.match(
@@ -54,9 +54,8 @@ export class hostContainer {
           throw new Error("invalid input URL");
         }
 
-        const apiUrl = `/api/github-zip?user=${match[1]}&repo=${
-          match[2]
-        }&branch=${this.metadata?.branch || "main"}`;
+        const apiUrl = `/api/github-zip?user=${match[1]}&repo=${match[2]
+          }&branch=${this.metadata?.branch || "main"}`;
         let res: any;
 
         try {
@@ -64,8 +63,7 @@ export class hostContainer {
             .getState()
             .addLog(
               "normal",
-              `> git clone --branch ${
-                this.metadata?.branch || "main"
+              `> git clone --branch ${this.metadata?.branch || "main"
               } https://github.com/${match[1]}/${match[2]}.git`
             );
           res = await axios.get(apiUrl, { responseType: "arraybuffer" });
@@ -78,35 +76,32 @@ export class hostContainer {
 
         const containerFiles: ContainerFile | any = {};
 
-        const mediaEntries: Record<string, Uint8Array> = {};
         for (const [path, content] of Object.entries(zip)) {
           if (path.endsWith("/")) continue;
 
-          
+
           const parts = path.split("/");
           const root = parts.shift();
           this.root = root;
           let current = containerFiles;
-          
+
           for (let i = 0; i < parts.length - 1; i++) {
             const dir = parts[i];
             if (!current[dir]) current[dir] = { directory: {} };
             current = current[dir].directory;
           }
           const fileName = parts[parts.length - 1];
-          if (/\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav)$/.test(path)) {
-            mediaEntries[fileName] = content as Uint8Array;
-            continue;
+          const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav)$/.test(path);
+          if (isMedia) {
+            current[fileName] = { file: { contents: 'media files not mounting' } }; // Uint8Array is breaking up during mount
+          } else {
+            current[fileName] = { file: { contents: content as Uint8Array } };
           }
-          current[fileName] = { file: { contents: content as Uint8Array } };
+          // current[fileName] = { file: { contents: content as Uint8Array } };
         }
-        console.log(' here goes the media Entries : ' , mediaEntries);
-        
+
         this.containerfiles = containerFiles;
-        const mediaZipData = zipSync(mediaEntries);
-        const mediaBlob = new Blob([mediaZipData], { type: "application/zip" });
-        this.mediaZipBlob = mediaBlob;
-        
+
         useLogStore
           .getState()
           .addLog("normal", "success : GitHub repo installed and processed ");
@@ -147,9 +142,9 @@ export class hostContainer {
 
           const fileName = parts[parts.length - 1];
           if (/\.(png|jpg|jpeg|gif|webp|bmp|ico)$/i.test(fileName)) {
-            const arrayBuffer = await file.arrayBuffer();
-            const uint8array = new Uint8Array(arrayBuffer);
-            current[fileName] = { file: { contents: uint8array } };
+            // const arrayBuffer = await file.arrayBuffer();
+            // const uint8array = new Uint8Array(arrayBuffer);
+            current[fileName] = { file: { contents: 'media files not mounting' } };
           } else {
             const content = await file.text();
             current[fileName] = { file: { contents: content } };
@@ -361,9 +356,8 @@ export class hostContainer {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${foldername || this.root}.${
-        format === "zip" ? "zip" : "json"
-      }`;
+      link.download = `${foldername || this.root}.${format === "zip" ? "zip" : "json"
+        }`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -549,6 +543,7 @@ export class hostContainer {
 
   private async _filesCloudUpload() {
     try {
+      //the mounting images are showing currupted on cloud _ TODO FIX
       const data = await this.wc.export("./dist", {
         format: "zip",
         excludes: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.mp4", "**/*.mp3", "**/*.webm", "**/*.ogg", "**/*.wav"],
@@ -561,17 +556,10 @@ export class hostContainer {
 
       const blob = new Blob([data], { type: "application/zip" });
       const formdata = new FormData();
-      // alert(
-      //   `Project Name: ${this.metadata.projectName}\n` +
-      //   `Description: ${this.metadata.description}\n` +
-      //   `URL: ${this.url}\n` +
-      //   `Build Time: ${this.metadata.buildtime}\n` +
-      //   `Dev Time: ${this.metadata.devtime}`
-      // );
+
       console.log(blob);
       formdata.append("file", blob, "project.zip");
-      formdata.append("media", (this.mediaZipBlob as Blob) , "media.zip");
-      formdata.append("buildTime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1 ).toFixed(0)));
+      formdata.append("buildTime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
       formdata.append("devtime", String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));
       formdata.append("description", this.metadata.description || "");
       formdata.append("githubUrl", this.url || "");
