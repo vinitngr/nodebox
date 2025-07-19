@@ -22,7 +22,7 @@ export class hostContainer {
   public metadata: ProjectMetaData = {};
   public tml: Terminal | null = null;
   static containerInstance: null | hostContainer = null;
-  // public mediaZipBlob: Blob | null = null
+  public mediaZipBlob: Blob | null = null
   constructor({ option, url }: { option: Option; url?: string }) {
     if (!option) {
       throw new Error("Option is required");
@@ -76,6 +76,7 @@ export class hostContainer {
 
         const containerFiles: ContainerFile | any = {};
 
+        const mediaEntries: Record<string, Uint8Array> = {};
         for (const [path, content] of Object.entries(zip)) {
           if (path.endsWith("/")) continue;
 
@@ -84,7 +85,6 @@ export class hostContainer {
           const root = parts.shift();
           this.root = root;
           let current = containerFiles;
-
           for (let i = 0; i < parts.length - 1; i++) {
             const dir = parts[i];
             if (!current[dir]) current[dir] = { directory: {} };
@@ -94,6 +94,8 @@ export class hostContainer {
           const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav)$/.test(path);
           if (isMedia) {
             current[fileName] = { file: { contents: 'media files not mounting' } }; // Uint8Array is breaking up during mount
+            mediaEntries[fileName] = content as Uint8Array;
+            continue;
           } else {
             current[fileName] = { file: { contents: content as Uint8Array } };
           }
@@ -101,7 +103,9 @@ export class hostContainer {
         }
 
         this.containerfiles = containerFiles;
-
+        const mediaZipData = zipSync(mediaEntries);
+        const mediaBlob = new Blob([mediaZipData], { type: "application/zip" });
+        this.mediaZipBlob = mediaBlob;
         useLogStore
           .getState()
           .addLog("normal", "success : GitHub repo installed and processed ");
@@ -559,6 +563,7 @@ export class hostContainer {
 
       console.log(blob);
       formdata.append("file", blob, "project.zip");
+      formdata.append("media", (this.mediaZipBlob as Blob) , "media.zip");
       formdata.append("buildTime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
       formdata.append("devtime", String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));
       formdata.append("description", this.metadata.description || "");

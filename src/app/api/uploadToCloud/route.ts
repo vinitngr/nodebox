@@ -42,9 +42,15 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData();
     const file = formData.get("file");
+    const media = formData.get('media');
+
     let projectName = formData.get("projectName");
 
+
+    if (!(file instanceof Blob)) throw new Error("Invalid file");
+    if (media && !(media instanceof Blob)) throw new Error("Invalid media");
     if (typeof projectName !== "string") throw new Error("Invalid projectName");
+    
     projectName = projectName.trim().toLowerCase().replace(/[^a-z0-9-_]/g, "");
     if (!file || !projectName) {
       return new Response("Missing file or projectName", { status: 400 });
@@ -65,7 +71,14 @@ export async function POST(req: NextRequest) {
       finalName = `${projectName}-${suffix}`;
     }
 
-    const fileCount = Object.keys(zip).length;
+    let fileCount = Object.keys(zip).length;
+    
+
+    const mediaBuffer = Buffer.from(await (media as Blob).arrayBuffer());
+    const mediazip = unzipSync(mediaBuffer);
+    fileCount += Object.keys(mediazip).length;
+
+
     if (fileCount > 20) {
       throw new Error(`Upload aborted: Too many files in zip (${fileCount})`);
     }
@@ -92,6 +105,28 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         console.error('Upload failed for', path, error);
         throw new Error(`Upload failed for ${path}: ${error}`);
+      }
+    }
+
+    for (const [fn, content] of Object.entries(mediazip)) {
+      try {
+        console.log('Uploading:', fn);
+
+        const key = `uploads/${finalName}/${fn}`;
+        const contentType = mime.getType(fn) || 'application/octet-stream';
+
+        const command = new PutObjectCommand({
+          Bucket: process.env.BUCKET_NAME!,
+          Key: key,
+          Body: content,
+          ContentType: contentType,
+          CacheControl: 'public, max-age=864000, immutable',
+        });
+
+        await s3.send(command);
+      } catch (error) {
+        console.error('Upload failed for', fn, error);
+        throw new Error(`Upload failed for ${fn}: ${error}`);
       }
     }
 
