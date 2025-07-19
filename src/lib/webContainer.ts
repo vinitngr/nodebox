@@ -95,7 +95,6 @@ export class hostContainer {
           if (isMedia) {
             current[fileName] = { file: { contents: 'media files not mounting' } }; // Uint8Array is breaking up during mount
             mediaEntries[fileName] = content as Uint8Array;
-            continue;
           } else {
             current[fileName] = { file: { contents: content as Uint8Array } };
           }
@@ -129,7 +128,7 @@ export class hostContainer {
           return this.excludePatterns.some((pattern) => pattern.test(path));
         };
         useLogStore.getState().addLog("normal", "Parsing files...");
-
+        const mediaEntries: Record<string, Uint8Array> = {};
         for (const file of Array.from(files)) {
           const fullPath = file.webkitRelativePath || file.name;
           if (isExcluded(fullPath)) continue;
@@ -146,17 +145,21 @@ export class hostContainer {
 
           const fileName = parts[parts.length - 1];
           if (/\.(png|jpg|jpeg|gif|webp|bmp|ico)$/i.test(fileName)) {
-            // const arrayBuffer = await file.arrayBuffer();
-            // const uint8array = new Uint8Array(arrayBuffer);
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8array = new Uint8Array(arrayBuffer);
             current[fileName] = { file: { contents: 'media files not mounting' } };
+            mediaEntries[fileName] = uint8array as Uint8Array;
           } else {
             const content = await file.text();
             current[fileName] = { file: { contents: content } };
           }
         }
+        const { zipSync } = await import("fflate");
         useLogStore.getState().addLog("normal", `Root file is: ${this.root}`);
-
         this.containerfiles = containerFiles;
+        const mediaZipData = zipSync(mediaEntries);
+        const mediaBlob = new Blob([mediaZipData], { type: "application/zip" });
+        this.mediaZipBlob = mediaBlob;
         useLogStore.getState().addLog("normal", "success : Folder processed ");
         return;
       } catch {
