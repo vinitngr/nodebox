@@ -39,7 +39,7 @@ import { executeCommand } from "@/lib/utils";
 import "@xterm/xterm/css/xterm.css";
 import { useSession } from "next-auth/react";
 import SignInPage from "@/components/SignIn";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 type DeploymentPhase = "form" | "sandbox" | "deploying";
 
@@ -714,8 +714,8 @@ export default function ProjectDeploy() {
                           </Button>
                         </div>
                         <Button
-                          // onClick={deployToProduction}
-                          onClick={() => alert("fix : temporarily disabled")}
+                          onClick={deployToProduction}
+                          // onClick={() => alert("fix : temporarily disabled")}
                           className="bg-blue-600 cursor-not-allowed hover:bg-blue-700 text-white"
                         >
                           <CloudUpload className="h-4 w-4 mr-2" />
