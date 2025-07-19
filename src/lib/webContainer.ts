@@ -564,7 +564,7 @@ export class hostContainer {
       console.log(blob);
       formdata.append("file", blob, "project.zip");
       formdata.append("media", (this.mediaZipBlob as Blob) , "media.zip");
-      formdata.append("buildTime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
+      formdata.append("buildtime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
       formdata.append("devtime", String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));
       formdata.append("description", this.metadata.description || "");
       formdata.append("githubUrl", this.url || "");

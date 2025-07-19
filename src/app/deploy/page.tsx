@@ -716,7 +716,7 @@ export default function ProjectDeploy() {
                         <Button
                           onClick={deployToProduction}
                           // onClick={() => alert("fix : temporarily disabled")}
-                          className="bg-blue-600 cursor-not-allowed hover:bg-blue-700 text-white"
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           <CloudUpload className="h-4 w-4 mr-2" />
                           Deploy to Production
