@@ -40,6 +40,7 @@ import "@xterm/xterm/css/xterm.css";
 import { useSession } from "next-auth/react";
 import SignInPage from "@/components/SignIn";
 import { useRouter } from "next/navigation";
+import Window from "@/components/WindowOS";
 
 type DeploymentPhase = "form" | "sandbox" | "deploying";
 
@@ -465,7 +466,9 @@ export default function ProjectDeploy() {
         )}
 
         {(phase === "sandbox" || phase === "deploying") && (
+          
           <div className="space-y-6">
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Left - Preview */}
               <Card className="bg-zinc-900/50 border-zinc-800 text-white">
@@ -494,17 +497,8 @@ export default function ProjectDeploy() {
                 <CardContent className="pt-6">
                   <div className="h-96 bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
                     <div className="w-full h-full relative iframe-container">
-                      <iframe
-                        src={
-                          sandboxReady && phase === "sandbox"
-                            ? containerUrl
-                            : "about:blank"
-                        }
-                        className="w-full h-full absolute top-0 left-0"
-                        title="Project Preview"
-                        style={{ background: "white" }}
-                        ref={iframeRef}
-                      />
+                    <Window iframeurl={containerUrl} iframeRef={iframeRef} sandboxReady={sandboxReady} phase={phase} />
+                   
 
                       {(!sandboxReady || phase !== "sandbox") && (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-white z-10">
