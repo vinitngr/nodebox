@@ -71,6 +71,7 @@ function App() {
       .then((data) => {
         const store = useLogStore.getState();
         store._explore = [...store._explore, ...data.projects];
+        setProjects((prev) => [...prev, ...data.projects]);
       })
       .catch((e) => console.log(e));
   };

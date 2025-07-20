@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db/db";
 import { projectsTable, usersTable } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       })
       .from(projectsTable)
       .leftJoin(usersTable, eq(projectsTable.email, usersTable.email))
+      .orderBy(desc(projectsTable.created_at))
       .offset(start)
       .limit(limit);
       return NextResponse.json({ projects }, {
