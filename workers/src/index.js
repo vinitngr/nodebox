@@ -28,7 +28,7 @@ export default {
     try {
       const url = new URL(request.url);
       const parts = url.hostname.split('.');
-      const subdomain = parts.length > 3 ? parts[0].toLowerCase() : "portfolio";
+      const subdomain = parts.length > 2 ? parts[0].toLowerCase() : "www";
       const path = url.pathname === "/" ? "/index.html" : url.pathname;
 
       const targetUrl = `${env.CLOUDFRONT_URL}/${subdomain}${path}`;
