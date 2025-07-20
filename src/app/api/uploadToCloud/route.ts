@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     fileCount += Object.keys(mediazip).length;
 
 
-    if (fileCount > 20) {
+    if (fileCount > 30 && !isDev) {
       throw new Error(`Upload aborted: Too many files in zip (${fileCount})`);
     }
 

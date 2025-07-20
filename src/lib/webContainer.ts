@@ -80,7 +80,6 @@ export class hostContainer {
         for (const [path, content] of Object.entries(zip)) {
           if (path.endsWith("/")) continue;
 
-
           const parts = path.split("/");
           const root = parts.shift();
           this.root = root;
@@ -90,15 +89,20 @@ export class hostContainer {
             if (!current[dir]) current[dir] = { directory: {} };
             current = current[dir].directory;
           }
+
           const fileName = parts[parts.length - 1];
-          const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav)$/.test(path);
+          const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav)$/i.test(path);
           if (isMedia) {
-            current[fileName] = { file: { contents: 'media files not mounting' } }; // Uint8Array is breaking up during mount
-            mediaEntries[fileName] = content as Uint8Array;
+            current[fileName] = { file: { contents: 'media files not mounting' } };
+
+            const publicIndex = path.indexOf("public/");
+            if (publicIndex !== -1) {
+              const relativePath = path.slice(publicIndex + "public/".length);
+              mediaEntries[relativePath] = content as Uint8Array;
+            }
           } else {
             current[fileName] = { file: { contents: content as Uint8Array } };
           }
-          // current[fileName] = { file: { contents: content as Uint8Array } };
         }
 
         this.containerfiles = containerFiles;
@@ -109,7 +113,6 @@ export class hostContainer {
           .getState()
           .addLog("normal", "success : GitHub repo installed and processed ");
 
-        // await this._addplaceholders(axios);
         return;
       } catch (err) {
         useLogStore
@@ -148,12 +151,18 @@ export class hostContainer {
             const arrayBuffer = await file.arrayBuffer();
             const uint8array = new Uint8Array(arrayBuffer);
             current[fileName] = { file: { contents: 'media files not mounting' } };
-            mediaEntries[fileName] = uint8array as Uint8Array;
+
+            const publicIndex = fullPath.indexOf("public/");
+            if (publicIndex !== -1) {
+              const relativePath = fullPath.slice(publicIndex + "public/".length);
+              mediaEntries[relativePath] = uint8array;
+            }
           } else {
             const content = await file.text();
             current[fileName] = { file: { contents: content } };
           }
         }
+
         const { zipSync } = await import("fflate");
         useLogStore.getState().addLog("normal", `Root file is: ${this.root}`);
         this.containerfiles = containerFiles;
@@ -566,7 +575,7 @@ export class hostContainer {
 
       console.log(blob);
       formdata.append("file", blob, "project.zip");
-      formdata.append("media", (this.mediaZipBlob as Blob) , "media.zip");
+      formdata.append("media", (this.mediaZipBlob as Blob), "media.zip");
       formdata.append("buildtime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
       formdata.append("devtime", String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));
       formdata.append("description", this.metadata.description || "");
