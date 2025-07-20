@@ -676,7 +676,7 @@ export default function ProjectDeploy() {
                             <p className="text-white font-medium">
                               https://
                               {projectName.toLowerCase().replace(/\s+/g, "")}
-                              .nodebox.vinitngr.xyz
+                              .vinitngr.xyz
                             </p>
                           </div>
                         </div>
