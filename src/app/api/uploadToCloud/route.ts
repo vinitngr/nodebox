@@ -19,6 +19,12 @@ const s3 = new S3Client({
 });
 
 export async function POST(req: NextRequest) {
+
+  if(!process.env.ALLOW){
+    return new Response(`Uplaod failed : service is disabled`, {
+      status: 403,
+    });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) return new Response("Unauthorized", { status: 401 });
