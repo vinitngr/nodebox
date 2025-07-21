@@ -502,12 +502,12 @@ export class hostContainer {
   }
 
   public async DeployToProduction() {
-    try {
-      await this.wc.fs.readFile("vite.config.js");
-    } catch {
-      useLogStore.getState().addLog("error", "Error: Not a Vite project");
-      return { success: false, error: "Not a Vite project" };
-    }
+    // try {
+    //   await this.wc.fs.readFile("vite.config.js");
+    // } catch {
+    //   useLogStore.getState().addLog("error", "Error: Not a Vite project");
+    //   return { success: false, error: "Not a Vite project" };
+    // }
 
     try {
       useLogStore.getState().addLog("normal", "Building Project...");
