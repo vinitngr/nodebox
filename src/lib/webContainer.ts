@@ -203,7 +203,7 @@ export class hostContainer {
     if (input.metadata?.description)
       instance.metadata.description = input.metadata.description;
     if (input.metadata?.outFolder)
-      instance.metadata.outFolder = input.metadata.outFolder;
+      instance.metadata.outFolder = input.metadata.outFolder || "dist";
     if (input.metadata?.branch)
       instance.metadata.branch = input.metadata.branch;
     if (input.metadata?.buildCommand)
@@ -502,12 +502,19 @@ export class hostContainer {
   }
 
   public async DeployToProduction() {
-    // try {
-    //   await this.wc.fs.readFile("vite.config.js");
-    // } catch {
-    //   useLogStore.getState().addLog("error", "Error: Not a Vite project");
-    //   return { success: false, error: "Not a Vite project" };
-    // }
+    let configFile = "vite.config.js";
+    try {
+      await this.wc.fs.readFile(configFile);
+    } catch {
+      configFile = "vite.config.ts";
+      try {
+        await this.wc.fs.readFile(configFile);
+      } catch {
+        useLogStore.getState().addLog("error", "Error: Not a Vite project");
+        return { success: false, error: "Not a Vite project" };
+      }
+    }
+
 
     try {
       useLogStore.getState().addLog("normal", "Building Project...");

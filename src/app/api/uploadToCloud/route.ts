@@ -9,7 +9,7 @@ import { projectsTable } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { NeonDbError } from "@neondatabase/serverless";
-
+import * as pathModule from 'path';
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
       try {
         console.log('Uploading:', path);
         const outfolder = formData.get('outfolder');
-        const relativePath = path.startsWith(`${outfolder}/`) ? path.slice(5) : path;
+        const relativePath = pathModule.relative(((outfolder || "dist") as string), path);
+
         if (!relativePath || relativePath.endsWith('/')) continue;
 
         const key = `uploads/${finalName}/${relativePath}`;

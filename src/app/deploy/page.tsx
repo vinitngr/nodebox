@@ -106,7 +106,7 @@ export default function ProjectDeploy() {
         newHost = await hostContainer.initialize({
           option: "folder",
           projectName: projectName,
-          metadata: { env: envVars, buildCommand, rundev, description },
+          metadata: { env: envVars, buildCommand, rundev, description , outFolder },
           files,
         });
       else if (githubUrl.trim()) {
@@ -122,6 +122,7 @@ export default function ProjectDeploy() {
             buildCommand,
             rundev,
             description,
+            outFolder
           },
         });
       } else return alert("Please provide either a GitHub URL or a folder");
