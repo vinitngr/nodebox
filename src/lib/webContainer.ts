@@ -202,6 +202,8 @@ export class hostContainer {
     if (input.metadata?.env) instance.metadata.env = input.metadata.env;
     if (input.metadata?.description)
       instance.metadata.description = input.metadata.description;
+    if (input.metadata?.outFolder)
+      instance.metadata.outFolder = input.metadata.outFolder;
     if (input.metadata?.branch)
       instance.metadata.branch = input.metadata.branch;
     if (input.metadata?.buildCommand)
@@ -337,7 +339,8 @@ export class hostContainer {
 
   private _installDependencies = async () => {
     try {
-      const installProcess = await this.wc.spawn("npm", ["install"]);
+
+      const installProcess = await this.wc.spawn("npm", ["install", "--legacy-peer-deps", "--no-fund", "--no-audit"]);
       installProcess.output.pipeTo(
         new WritableStream({
           start() {
@@ -359,7 +362,7 @@ export class hostContainer {
   };
 
   public exportFile = async (
-    whatTo: string = "./dist",
+    whatTo: string = `./${this.metadata.outFolder || "dist"}`,
     format: ExportOptions["format"] = "zip",
     foldername?: string
   ) => {
@@ -544,7 +547,7 @@ export class hostContainer {
   }
 
   public async parseIndex() {
-    let html = await this.readFile("./dist/index.html");
+    let html = await this.readFile(`./${this.metadata.outFolder}/index.html`);
     // const buildFolder = folders.find(name =>
     //   ["dist", "build", "out"].includes(name)
     // ) || "dist";
@@ -553,14 +556,14 @@ export class hostContainer {
       /(href|src)=["']\/([^"']+)["']/g,
       (_, attr, path) => `${attr}="./${path}"`
     );
-    await this.writeFile("./dist/index.html", html);
+    await this.writeFile(`./${this.metadata.outFolder || "dist"}/index.html`, html);
     // this.downloadFile('./dist/index.html', html)
   }
 
   private async _filesCloudUpload() {
     try {
       //the mounting images are showing currupted on cloud _ TODO FIX
-      const data = await this.wc.export("./dist", {
+      const data = await this.wc.export(`./${this.metadata.outFolder || "dist"}`, {
         format: "zip",
         excludes: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.gif", "**/*.mp4", "**/*.mp3", "**/*.webm", "**/*.ogg", "**/*.wav"],
       });
@@ -575,6 +578,7 @@ export class hostContainer {
 
       console.log(blob);
       formdata.append("file", blob, "project.zip");
+      formdata.append("outfolder" , this.metadata.outFolder || 'dist');
       formdata.append("media", (this.mediaZipBlob as Blob), "media.zip");
       formdata.append("buildtime", String((this.metadata.buildtime ? this.metadata.buildtime / 1000 : -1).toFixed(0)));
       formdata.append("devtime", String((this.metadata.devtime ? this.metadata.devtime / 1000 : -1).toFixed(0)));

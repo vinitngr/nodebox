@@ -69,6 +69,7 @@ export default function ProjectDeploy() {
   const { data: session, status } = useSession();
   const logs = useLogStore((s) => s.logs);
   const [ProductionDone, setProductionDone] = useState(false);
+  const [outFolder, setoutFolder] = useState('dist')
 
   useEffect(() => {
     document.title = "Nodebox | Deploy";
@@ -411,7 +412,9 @@ export default function ProjectDeploy() {
                           onChange={(e) => setRundev(e.target.value)}
                           className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500"
                         />
+
                       </div>
+
 
                       <div className="space-y-2">
                         <Label
@@ -428,7 +431,21 @@ export default function ProjectDeploy() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="out-folder"
+                        className="text-white font-medium"
+                      >
+                        Build Folder
+                      </Label>
 
+                      <Input
+                        id="out-folder"
+                        value={`/${outFolder}`}
+                        onChange={(e) => setoutFolder(e.target.value)}
+                        className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                    </div>
                     <Separator className="bg-zinc-800" />
 
                     {/* Environment Variables */}
@@ -466,7 +483,7 @@ export default function ProjectDeploy() {
         )}
 
         {(phase === "sandbox" || phase === "deploying") && (
-          
+
           <div className="space-y-6">
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -497,8 +514,8 @@ export default function ProjectDeploy() {
                 <CardContent className="pt-6">
                   <div className="h-96 bg-zinc-800 rounded-lg border border-zinc-700 overflow-hidden">
                     <div className="w-full h-full relative iframe-container">
-                    <Window iframeurl={containerUrl} iframeRef={iframeRef} sandboxReady={sandboxReady} phase={phase} />
-                   
+                      <Window iframeurl={containerUrl} iframeRef={iframeRef} sandboxReady={sandboxReady} phase={phase} />
+
 
                       {(!sandboxReady || phase !== "sandbox") && (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-white z-10">

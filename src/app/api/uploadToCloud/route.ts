@@ -20,21 +20,21 @@ const s3 = new S3Client({
 
 export async function POST(req: NextRequest) {
 
-  if(!process.env.ALLOW){
-    return new Response(`Uplaod failed : service is disabled`, {
-      status: 403,
-    });
-  }
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) return new Response("Unauthorized", { status: 401 });
+    const isDev = process.env.ENV === "development";
     
+    if(!process.env.ALLOW && session.user.email !== "vinitnagar56@gmail.com"&& !isDev) {
+      return new Response(`Uplaod failed : service is disabled`, {
+        status: 403,
+      });
+    }
     const [{count}] = await db
     .select({count : sql<number> `count(*)`})
     .from(projectsTable)
     .where(eq(projectsTable.email, session.user.email))
     
-    const isDev = process.env.ENV === "development";
     if(count > 5 && !isDev && session.user.email !== "vinitnagar56@gmail.com") {
       return new Response("You have reached the limit of 5 projects", { status: 403 });
     }
@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
     for (const [path, content] of Object.entries(zip)) {
       try {
         console.log('Uploading:', path);
-        const relativePath = path.startsWith('dist/') ? path.slice(5) : path;
+        const outfolder = formData.get('outfolder');
+        const relativePath = path.startsWith(`${outfolder}/`) ? path.slice(5) : path;
         if (!relativePath || relativePath.endsWith('/')) continue;
 
         const key = `uploads/${finalName}/${relativePath}`;
