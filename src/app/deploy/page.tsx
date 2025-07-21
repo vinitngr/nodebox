@@ -441,7 +441,7 @@ export default function ProjectDeploy() {
 
                       <Input
                         id="out-folder"
-                        value={`/${outFolder}`}
+                        value={`${outFolder}`}
                         onChange={(e) => setoutFolder(e.target.value)}
                         className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:ring-blue-500"
                       />
