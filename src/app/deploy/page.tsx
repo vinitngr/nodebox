@@ -478,9 +478,11 @@ export default function ProjectDeploy() {
                 </ScrollArea>
               </CardContent>
             </Card> 
-            <div className="h-full w-full border border-white/10 rounded-2xl bg-black/40 backdrop-blur-sm absolute top-0 right-0">
+            {!session && (
+              <div className="h-full w-full border border-white/10 rounded-2xl bg-black/40 backdrop-blur-sm absolute top-0 right-0">
               <SignInPage/>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
