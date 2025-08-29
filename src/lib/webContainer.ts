@@ -106,7 +106,7 @@ export class hostContainer {
         }
 
         this.containerfiles = containerFiles;
-        const mediaZipData = zipSync(mediaEntries);
+        const mediaZipData = zipSync(mediaEntries) as BlobPart;
         const mediaBlob = new Blob([mediaZipData], { type: "application/zip" });
         this.mediaZipBlob = mediaBlob;
         useLogStore
@@ -166,7 +166,7 @@ export class hostContainer {
         const { zipSync } = await import("fflate");
         useLogStore.getState().addLog("normal", `Root file is: ${this.root}`);
         this.containerfiles = containerFiles;
-        const mediaZipData = zipSync(mediaEntries);
+        const mediaZipData = zipSync(mediaEntries) as BlobPart;
         const mediaBlob = new Blob([mediaZipData], { type: "application/zip" });
         this.mediaZipBlob = mediaBlob;
         useLogStore.getState().addLog("normal", "success : Folder processed ");
@@ -371,7 +371,7 @@ export class hostContainer {
       const blob =
         format === "json"
           ? new Blob([JSON.stringify(data)], { type: "application/json" })
-          : new Blob([data]);
+          : new Blob([data as BlobPart]);
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -580,7 +580,7 @@ export class hostContainer {
         throw new Error("File size exceeds limit 10mb");
       }
 
-      const blob = new Blob([data], { type: "application/zip" });
+      const blob = new Blob([data as BlobPart], { type: "application/zip" });
       const formdata = new FormData();
 
       console.log(blob);
@@ -625,7 +625,7 @@ export class hostContainer {
   }
 
   public static downloadFile(filename: string, data: Uint8Array) {
-    const blob = new Blob([data]);
+    const blob = new Blob([data as BlobPart]);
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
