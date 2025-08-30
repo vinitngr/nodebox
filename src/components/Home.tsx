@@ -10,27 +10,25 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", 
 
 export default function HomePage() {
   const router = useRouter()
-  const scrollToForm = (where : string) => {
+  const scrollToForm = (where: string) => {
     router.push(`/${where}`)
   }
 
   return (
-    <div 
-    style={{
+    <div
+      style={{
         background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99, 102, 241, 0.25), transparent 70%), #000000",
       }}
-    className={cn( spaceGrotesk.className ,"sm:h-screen bg-zinc-900/50  text-white overflow-hidden") }
+      className={cn(spaceGrotesk.className, "sm:h-screen bg-zinc-900/50  text-white overflow-hidden")}
     >
-
 
       <section className="relative sm:pt-15 pt-34  sm:h-screen flex items-center justify-center  px-4">
         <div className="max-w-5xl mx-auto text-center ">
           {/* Badge */}
           <Badge className="mb-6 bg-blue-500/10 sm:translate-y-5 cursor-pointer text-blue-400 border-blue-500/20 hover:bg-blue-500/20 transition-colors text-sm">
             <Sparkles className="h-3 w-3 mr-1 " />
-            Built with 
-            <span className="text-lg bg-gradient-to-r from-pink-500 to-blue-600 bg-clip-text text-transparent font-bold">Bolt.new</span>
-            and WebContainer
+            Built with
+            <span className="text-lg bg-gradient-to-r from-pink-500 to-blue-600 bg-clip-text text-transparent font-bold">webContainer</span> And  💗
           </Badge>
 
           {/* Main Heading */}
@@ -49,7 +47,7 @@ export default function HomePage() {
 
           {/* CTA Buttons */}
           <div
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Button
               onClick={() => scrollToForm('deploy')}
               size="lg"
@@ -64,7 +62,7 @@ export default function HomePage() {
               size="lg"
               className=" bg-gradient-to-r from-pink-700 to-orange-300  cursor-pointer hover:bg-pink-700 text-white px-8 py-4 text-base font-semibold"
             >
-              <Globe2Icon/>
+              <Globe2Icon />
               Explore
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
@@ -84,7 +82,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      
+
     </div>
   )
 }

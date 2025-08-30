@@ -1,9 +1,5 @@
 
-![Screenshot](public/bolt.png)
-
 # NodeBox 🧰⚡️  
-**Project Submission for BOTL.new Hackathon**
-
 ---
 
 ## 🚀 Introduction
@@ -46,7 +42,7 @@ Currently, only **React + Vite** projects are supported.
 ## 🖼️ Pages & Flow
 
 ### 🏠 Home Page
-A vibrant AI-coded landing built with Bolt.new + custom components.
+A vibrant AI-coded landing built with Bolt.new , v0 + custom components.
 
 ### 🚀 Deploy Page *(Core Feature)*
 - Upload GitHub URL or folder
@@ -69,7 +65,7 @@ A vibrant AI-coded landing built with Bolt.new + custom components.
 
 ## 🛠️ Tech Stack & Tools
 
-- **Frontend:** Tailwind CSS, Vite, Bolt.new
+- **Frontend:** Tailwind CSS, Vite, Bolt.new , V0
 - **Web sandbox:** StackBlitz WebContainer API
 - **Auth:** NextAuth (GitHub)
 - **Storage:** AWS S3 + CloudFront
@@ -92,7 +88,6 @@ A vibrant AI-coded landing built with Bolt.new + custom components.
 
 - Deep understanding of Next.js headers and static hosting
 - Hands-on with WebContainer API and frontend sandboxing
-- Advanced frontend workflows using AI tools like Bolt.new
 - Experience using BunJS, Drizzle ORM in real-world project
 
 ---
@@ -109,7 +104,3 @@ A vibrant AI-coded landing built with Bolt.new + custom components.
 ## 📌 Final Note
 
 NodeBox is built for developers who want **instant feedback with zero setup**.  
-It’s aligned with Bolt.new’s mission: *“Build fast, ship faster.”*
-
-Check out the [GitHub Repo](#) and [Blog](#) for more insights.  
-Thanks for watching.
