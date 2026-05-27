@@ -57,7 +57,11 @@ export function CodeEditor({ files, host , refreshKey , setFiles }: CodeEditorPr
     async function loadContent() {
       if (selectedFile) {
         const content = await host.readFile(selectedFile)
-        setCurrentFileContent(content)
+        if (typeof content === 'string') {
+          setCurrentFileContent(content)
+        } else {
+          setCurrentFileContent(new TextDecoder().decode(content))
+        }
       }
     }
     loadContent()

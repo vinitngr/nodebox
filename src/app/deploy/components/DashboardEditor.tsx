@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
   FileCode,
   Search,
   X,
+  Download,
 } from "lucide-react";
 import { hostContainer } from "@/lib/webContainer";
 import { cn } from "@/lib/utils";
@@ -93,11 +94,58 @@ export function DashboardEditor({
     setExpandedFolders(newExpanded);
   };
 
+  const isBinaryFile = (filename: string) => {
+    const binaryExts = [
+      ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", 
+      ".mp4", ".webm", ".ogg", ".mp3", ".wav", ".flac", ".aac",
+      ".pdf", ".zip", ".gz", ".tar", ".7z",
+      ".woff", ".woff2", ".ttf", ".otf", ".eot"
+    ];
+    return binaryExts.some(ext => filename.toLowerCase().endsWith(ext));
+  };
+
+  const handleDownload = async () => {
+    if (!selectedFile) return;
+    try {
+      const content = await host.readFile(selectedFile);
+      const filename = selectedFile.split("/").pop() || "file";
+      
+      let blob: Blob;
+      if (content instanceof Uint8Array) {
+        blob = new Blob([content], { type: "application/octet-stream" });
+      } else {
+        const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
+        blob = new Blob([text], { type: "text/plain" });
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  };
+
   const handleFileSelect = async (path: string) => {
     setSelectedFile(path);
+    if (isBinaryFile(path)) {
+      setCurrentFileContent("");
+      return;
+    }
     try {
       const content = await host.readFile(path);
-      setCurrentFileContent(content);
+      if (content instanceof Uint8Array) {
+        setCurrentFileContent(new TextDecoder().decode(content));
+      } else if (typeof content === 'string') {
+        setCurrentFileContent(content);
+      } else {
+        setCurrentFileContent(new TextDecoder().decode(new Uint8Array(content as ArrayBuffer)));
+      }
     } catch (error) {
       console.error("Error reading file:", error);
       setCurrentFileContent("");
@@ -147,7 +195,7 @@ export function DashboardEditor({
     }
   };
 
-  const renderTree = (item: FileTreeItem, depth = 0) => {
+  const renderTree = (item: FileTreeItem, depth = 0): ReactNode => {
     const isExpanded = expandedFolders.has(item.path);
     const isSelected = selectedFile === item.path;
 
@@ -165,7 +213,7 @@ export function DashboardEditor({
       <div key={item.path} className="space-y-0.5">
         <div
           className={cn(
-            "flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors group text-xs",
+            "flex items-center gap-2 px-2 py-1 cursor-pointer transition-colors group text-xs",
             isSelected ? "bg-zinc-800 text-white" : "hover:bg-zinc-900 text-zinc-400"
           )}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
@@ -201,7 +249,7 @@ export function DashboardEditor({
   };
 
   return (
-    <div className="flex h-[calc(100vh-160px)] max-h-[850px] border border-zinc-800 rounded bg-zinc-950 overflow-hidden">
+    <div className="flex h-[calc(100vh-160px)] max-h-[850px] border border-zinc-800 bg-zinc-950 overflow-hidden shadow-2xl">
       {/* Sidebar - File Tree */}
       <div className="w-56 border-r border-zinc-800 flex flex-col bg-zinc-950">
         <div className="p-3 border-b border-zinc-800 space-y-3">
@@ -220,7 +268,7 @@ export function DashboardEditor({
             <Search className="absolute left-2 top-2 h-3 w-3 text-zinc-600" />
             <input 
               placeholder="Filter..." 
-              className="w-full bg-zinc-900 border border-zinc-800 rounded px-7 py-1.5 text-[11px] text-zinc-300 focus:outline-none"
+              className="w-full bg-zinc-900 border border-zinc-800 px-7 py-1.5 text-[11px] text-zinc-300 focus:outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -240,6 +288,9 @@ export function DashboardEditor({
                 <span className="text-xs text-zinc-400 font-mono">{selectedFile}</span>
               </div>
               <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={handleDownload} title="Download File" className="h-7 w-7 p-0 text-zinc-500 hover:text-white">
+                  <Download className="h-3 w-3" />
+                </Button>
                 <Button size="sm" variant="ghost" onClick={handleCopy} className="h-7 w-7 p-0 text-zinc-500 hover:text-white">
                   {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 </Button>
@@ -257,17 +308,35 @@ export function DashboardEditor({
               </div>
             </div>
             <div className="flex-1 relative">
-              <textarea
-                value={currentFileContent}
-                onChange={(e) => setCurrentFileContent(e.target.value)}
-                className="absolute inset-0 w-full h-full p-4 bg-transparent text-zinc-300 font-mono text-xs resize-none focus:outline-none leading-normal"
-                spellCheck={false}
-              />
+              {isBinaryFile(selectedFile) ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-zinc-950">
+                  <div className="w-12 h-12 bg-zinc-900 flex items-center justify-center mb-3 border border-zinc-800">
+                    <FileText className="h-5 w-5 text-zinc-600" />
+                  </div>
+                  <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Binary File</p>
+                  <p className="text-zinc-600 text-[10px] mt-1 mb-4">This file type cannot be edited in the browser.</p>
+                  <Button 
+                    size="sm" 
+                    onClick={handleDownload}
+                    className="bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] h-8"
+                  >
+                    <Download className="h-3 w-3 mr-2" />
+                    Download to Verify
+                  </Button>
+                </div>
+              ) : (
+                <textarea
+                  value={currentFileContent}
+                  onChange={(e) => setCurrentFileContent(e.target.value)}
+                  className="absolute inset-0 w-full h-full p-4 bg-transparent text-zinc-300 font-mono text-xs resize-none focus:outline-none leading-normal"
+                  spellCheck={false}
+                />
+              )}
             </div>
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="w-12 h-12 rounded bg-zinc-900 flex items-center justify-center mb-3 border border-zinc-800">
+            <div className="w-12 h-12 bg-zinc-900 flex items-center justify-center mb-3 border border-zinc-800">
               <FileCode className="h-5 w-5 text-zinc-600" />
             </div>
             <p className="text-zinc-500 text-xs">Select a file to begin editing</p>

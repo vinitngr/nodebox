@@ -13,9 +13,10 @@ export type LogStore = {
 
 export interface ContainerFile {
     [name: string]: {
-        file: {
+        file?: {
             contents: string | Uint8Array;
         };
+        directory?: ContainerFile;
     };
 }
 

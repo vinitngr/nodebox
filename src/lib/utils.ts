@@ -17,7 +17,6 @@ export const executeCommand = (
   setTerminalInput: any
 ) => {
   if (!host) return;
-  useLogStore.setState({ logs: [] });
   const trimmedCommand = input.trim();
   if (!trimmedCommand) return;
 
@@ -28,14 +27,12 @@ export const executeCommand = (
   // const [command, ...args] = input.split(' ')
 
   async function jshTerminal(input: string) {
-    host?.tml?.write('-------------------------------------------------------->\n')
-    host?.tml?.write(`~$ ${input}\n\n`);
+    host?.tml?.write(`\x1b[1;32muser@nodebox\x1b[0m:\x1b[1;34m~\x1b[0m$ ${input}\r\n`);
     const output = await host!.wc.spawn("sh", ["-c", input]);
     output.output.pipeTo(
       new WritableStream({
         write(data) {
-          if (!data.trim()) return;
-          host?.tml?.write(data);
+          host?.tml?.write(data.replace(/\n/g, '\r\n'));
         },
       })
     );
@@ -50,18 +47,21 @@ export const executeCommand = (
       host.tml?.write("developer");
       break
     case "help":
-      host.tml?.write("\n");
-      host.tml?.write("Available commands:\n" +
-        "  ls           - list directory contents\n" +
-        "  export <file> - export file\n" +
-        "  clear        - clear terminal\n" +
-        "  pwd          - print working directory\n" +
-        "  whoami       - print current user\n" +
-        "  edit <file>  - open file in editor\n" +
-        "  help         - show this help message" +
-        "  mkdir <dir>  - create directory\n" +
-        "  touch <file> - create empty file\n");
-   
+      host.tml?.write("\r\n\x1b[1;37mAVAILABLE COMMANDS\x1b[0m\r\n");
+      const commands = [
+        ["ls", "list directory contents"],
+        ["pwd", "print working directory"],
+        ["mkdir <dir>", "create new directory"],
+        ["touch <file>", "create empty file"],
+        ["export <file>", "download file/folder as zip"],
+        ["whoami", "show current user"],
+        ["clear", "clear terminal screen"],
+        ["help", "show this reference"],
+      ];
+      commands.forEach(([cmd, desc]) => {
+        host.tml?.write(`  \x1b[1;36m${cmd.padEnd(15)}\x1b[0m ${desc}\r\n`);
+      });
+      host.tml?.write("\r\n");
       break;
     default:
       jshTerminal(trimmedCommand);

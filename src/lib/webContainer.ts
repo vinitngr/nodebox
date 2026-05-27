@@ -40,57 +40,50 @@ export class hostContainer {
       .addLog("normal", "Converting files to container format...");
 
     if (this.option === "github" && this.url) {
-      const axios = (await import("axios")).default;
       const { unzipSync, zipSync } = await import("fflate");
 
       try {
         const parsed = (await import("@/lib/githubUtils")).parseGitHubUrl(this.url);
         if (!parsed) {
-          useLogStore
-            .getState()
-            .addLog("error", "error : Invalid GitHub URL format");
+          useLogStore.getState().addLog("error", "error : Invalid GitHub URL format");
           throw new Error("invalid input URL");
         }
 
         const { owner, repo } = parsed;
-        const apiUrl = `/api/github-zip?user=${owner}&repo=${repo
-          }&branch=${this.metadata?.branch || "main"}`;
-        let res: any;
+        const apiUrl = `/api/github-zip?user=${owner}&repo=${repo}&branch=${this.metadata?.branch || "main"}`;
 
-        try {
-          useLogStore
-            .getState()
-            .addLog(
-              "normal",
-              `> git clone --branch ${this.metadata?.branch || "main"
-              } https://github.com/${owner}/${repo}.git`
-            );
-          res = await axios.get(apiUrl, { responseType: "arraybuffer" });
-        } catch (error) {
-          useLogStore.getState().addLog("error", "Failed to fetch GitHub ZIP");
-          throw new Error("error while getting data from github");
-        }
+        useLogStore.getState().addLog("normal", `> git clone --branch ${this.metadata?.branch || "main"} https://github.com/${owner}/${repo}.git`);
+        
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('API fetch failed');
+        const buffer = await response.arrayBuffer();
 
-        let zip = unzipSync(new Uint8Array(res.data));
+        let zip = unzipSync(new Uint8Array(buffer));
 
-        const containerFiles: ContainerFile | any = {};
+        const containerFiles: ContainerFile = {};
         const mediaEntries: Record<string, Uint8Array> = {};
-
-        const rootFolder = this.metadata?.rootFolder?.replace(/^\/+|\/+$/g, ""); // Normalize: no leading/trailing slashes
 
         for (const [path, content] of Object.entries(zip)) {
           if (path.endsWith("/")) continue;
 
           const parts = path.split("/");
-          const topLevel = parts.shift(); // The repo-branch/ folder
-          this.root = topLevel;
-
+          parts.shift(); // Remove zip root
+          
           let filePath = parts.join("/");
 
-          // If rootFolder is specified, only include files inside it
-          if (rootFolder) {
-            if (!filePath.startsWith(rootFolder + "/")) continue;
-            filePath = filePath.substring(rootFolder.length + 1);
+          // Handle rootFolder if provided
+          if (this.metadata?.rootFolder) {
+            const root = this.metadata.rootFolder.replace(/^\/+|\/+$/g, "");
+            const isPublic = filePath.startsWith("public/");
+            const isCore = ["package.json", "tsconfig.json", "jsconfig.json", ".env"].includes(filePath);
+            
+            if (filePath.startsWith(root + "/")) {
+                filePath = filePath.substring(root.length + 1);
+            } else if (isPublic || isCore) {
+                // Keep these even if outside root, but place them relative to project root
+            } else {
+                continue;
+            }
           }
 
           const subParts = filePath.split("/");
@@ -98,21 +91,19 @@ export class hostContainer {
           for (let i = 0; i < subParts.length - 1; i++) {
             const dir = subParts[i];
             if (!current[dir]) current[dir] = { directory: {} };
-            current = current[dir].directory;
+            current = current[dir].directory as ContainerFile;
           }
 
           const fileName = subParts[subParts.length - 1];
-          const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav|pdf)$/i.test(path);
-          if (isMedia) {
-            current[fileName] = { file: { contents: content as Uint8Array } };
+          const fileData = new Uint8Array(content);
+          current[fileName] = { file: { contents: fileData } };
 
-            const publicIndex = path.indexOf("public/");
-            if (publicIndex !== -1) {
-              const relativePath = path.slice(publicIndex + "public/".length);
-              mediaEntries[relativePath] = content as Uint8Array;
-            }
-          } else {
-            current[fileName] = { file: { contents: content as Uint8Array } };
+          // Keep track of media for production zip
+          const lowerPath = path.toLowerCase();
+          if (lowerPath.includes("/public/")) {
+            const parts = path.split(/[\/\\]public[\/\\]/i);
+            const relativePath = parts[parts.length - 1];
+            mediaEntries[relativePath] = fileData;
           }
         }
 
@@ -135,7 +126,7 @@ export class hostContainer {
     }
     if (this.option === "folder") {
       try {
-        const containerFiles: ContainerFile | any = {};
+        const containerFiles: ContainerFile = {};
         if (!files) throw new Error("No files provided");
 
         const isExcluded = (path: string) => {
@@ -150,27 +141,22 @@ export class hostContainer {
 
           const root = parts.shift();
           this.root = root;
-          let current = containerFiles;
+          let current: any = containerFiles;
           for (let i = 0; i < parts.length - 1; i++) {
             const dir = parts[i];
             if (!current[dir]) current[dir] = { directory: {} };
-            current = current[dir].directory;
+            current = current[dir].directory as ContainerFile;
           }
 
           const fileName = parts[parts.length - 1];
-          if (/\.(png|jpg|jpeg|gif|webp|bmp|ico|mp4|mp3|webm|ogg|wav|pdf)$/i.test(fileName)) {
-            const arrayBuffer = await file.arrayBuffer();
-            const uint8array = new Uint8Array(arrayBuffer);
-            current[fileName] = { file: { contents: uint8array } };
+          const arrayBuffer = await file.arrayBuffer();
+          const fileData = new Uint8Array(arrayBuffer);
+          current[fileName] = { file: { contents: fileData } };
 
-            const publicIndex = fullPath.indexOf("public/");
-            if (publicIndex !== -1) {
-              const relativePath = fullPath.slice(publicIndex + "public/".length);
-              mediaEntries[relativePath] = uint8array;
-            }
-          } else {
-            const content = await file.text();
-            current[fileName] = { file: { contents: content } };
+          if (fullPath.includes("/public/")) {
+            const publicIndex = fullPath.indexOf("/public/");
+            const relativePath = fullPath.slice(publicIndex + "/public/".length);
+            mediaEntries[relativePath] = fileData;
           }
         }
 
@@ -249,20 +235,6 @@ export class hostContainer {
     return instance;
   }
 
-  private async _addplaceholders(axios: Axios) {
-    try {
-      await this.wc.fs.readdir("./public");
-    } catch {
-      await this.wc.fs.mkdir("./public", { recursive: true });
-    }
-    useLogStore.getState().addLog("normal", "adding placeholder.jpg");
-    const imageRes = await axios.get("/placeholder.jpg", {
-      responseType: "arraybuffer",
-    });
-    const buffer1 = new Uint8Array(imageRes.data);
-    await this.wc.fs.writeFile("./public/placeholder.jpg", buffer1);
-  }
-
   public getTheWorkDone = async () => {
     try {
       const filteredFiles = Object.fromEntries(
@@ -274,17 +246,18 @@ export class hostContainer {
 
       try {
         await this.wc.mount(filteredFiles as FileSystemTree);
-        useLogStore.getState().addLog("normal", "files mounted");
+        useLogStore.getState().addLog("normal", "success : files mounted to virtual system");
+        await this.detectFramework();
+        await this.injectHeaders();
+        await this.debugLogFiles();
       } catch (error) {
         useLogStore.getState().addLog("error", "Error while mounting");
         throw new Error("Error while mounting");
       }
 
       if (this.metadata.env) {
-        this.writeFile(".env", this.metadata.env);
+        await this.writeFile(".env", this.metadata.env);
       }
-
-      await this.detectFramework();
 
       try {
         const timeoutId = setTimeout(() => {
@@ -293,7 +266,7 @@ export class hostContainer {
         useLogStore.getState().addLog("normal", "> npm install");
         await this._installDependencies();
         clearTimeout(timeoutId);
-        useLogStore.getState().addLog("normal", "dependencies installed ");
+        useLogStore.getState().addLog("normal", "success : dependencies installed ");
       } catch (error) {
         useLogStore
           .getState()
@@ -306,33 +279,63 @@ export class hostContainer {
           .getState()
           .addLog(
             "normal",
-            `success : server is running (preview) ${url} port : ${port}`
+            `success : server is active ${url}`
           );
-        console.log("server is ready to run", url, port);
         this.containerurl = url;
         this.containerport = port;
         this.containerfiles = {};
       });
 
-      useLogStore
-        .getState()
-        .addLog("normal", `> ${this.metadata.rundev || "npm run dev"}`);
-      const code = await this.runTerminalCommand(
-        this.metadata.rundev || "npm run dev"
-      );
+      const startCmd = this.metadata.rundev || "npm run dev";
+      useLogStore.getState().addLog("normal", `> ${startCmd}`);
+      const code = await this.runTerminalCommand(startCmd);
       if (code === 1) {
-        useLogStore.getState().addLog("warn", "running start script");
+        useLogStore.getState().addLog("warn", "dev script failed, trying start script...");
         useLogStore.getState().addLog("normal", "> npm run start");
         await this.runTerminalCommand("npm run start");
-        if (code === 1) {
-          useLogStore.getState().addLog("error", "faild running dev script");
-          throw new Error("faild running dev script");
-        }
       }
     } catch (error) {
-      console.warn("Error in get Work Done : ", error);
+      console.warn("Error in sandbox workflow: ", error);
     }
   };
+
+  private async debugLogFiles() {
+    try {
+      const files = await this.getFilesName("/");
+      const stats: Record<string, { count: number, size: number }> = {};
+      let totalSize = 0;
+
+      useLogStore.getState().addLog("normal", `Isolation: crossOriginIsolated = ${window.crossOriginIsolated}`);
+
+      for (const f of files) {
+        const ext = f.split('.').pop()?.toLowerCase() || 'no-ext';
+        if (!stats[ext]) stats[ext] = { count: 0, size: 0 };
+        
+        try {
+          const content = await this.wc.fs.readFile(f);
+          const size = content.length;
+          stats[ext].count++;
+          stats[ext].size += size;
+          totalSize += size;
+
+          // Binary integrity check for first file of each media type
+          if (['png', 'jpg', 'jpeg', 'pdf', 'mp3', 'mp4'].includes(ext) && size > 0 && stats[ext].count === 1) {
+            const header = Array.from(content.slice(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+            useLogStore.getState().addLog("normal", `  [INTEGRITY] ${f}: ${header}`);
+          }
+        } catch (e) {
+          stats[ext].count++;
+        }
+      }
+      
+      useLogStore.getState().addLog("normal", `Status: ${files.length} files imported (${(totalSize / 1024).toFixed(1)} KB)`);
+      Object.entries(stats).forEach(([ext, data]) => {
+        useLogStore.getState().addLog("normal", `  - ${ext.toUpperCase()}: ${data.count} files (${(data.size / 1024).toFixed(1)} KB)`);
+      });
+    } catch (e) {
+      console.error("Debug log error:", e);
+    }
+  }
 
   public static cleanOutput(text: string) {
     return text.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").replace(/[\\|\/\-]/g, "");
@@ -341,20 +344,20 @@ export class hostContainer {
   public excludePatterns = [
     /^\.git/,
     /node_modules/,
-    // /^\.env/,
     /^build\//,
     /^dist\//,
+    /^\.next\//,
+    /^\.output\//,
+    /^\.svelte-kit\//,
     /^coverage\//,
     /^\.vscode\//,
     /^\.idea\//,
     /\.DS_Store$/,
     /\.log$/,
-    // /\.(svg|png|jpe?g|gif|webp|ico|bmp)$/i
   ];
 
   private _installDependencies = async () => {
     try {
-      // Use --prefer-offline and a faster registry to mitigate slowness
       const installProcess = await this.wc.spawn("npm", [
         "install", 
         "--legacy-peer-deps", 
@@ -367,13 +370,14 @@ export class hostContainer {
       installProcess.output.pipeTo(
         new WritableStream({
           write: (data) => {
+            if (this.tml) this.tml.write(data.replace(/\n/g, '\r\n'));
             console.log(hostContainer.cleanOutput(data));
           },
         })
       );
       return installProcess.exit;
     } catch (err) {
-      throw new Error("Erorr in start build : " + err);
+      throw new Error("Error in dependency installation: " + err);
     }
   };
 
@@ -391,7 +395,7 @@ export class hostContainer {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${foldername || this.root}.${format === "zip" ? "zip" : "json"
+      link.download = `${foldername || this.root || 'project'}.${format === "zip" ? "zip" : "json"
         }`;
       link.click();
       URL.revokeObjectURL(url);
@@ -401,9 +405,97 @@ export class hostContainer {
     }
   };
 
+  private async injectHeaders() {
+    try {
+      const files = await this.wc.fs.readdir("./");
+      
+      // 1. Handle Vite
+      const viteConfig = files.find(f => f.startsWith('vite.config.'));
+      if (viteConfig) {
+        useLogStore.getState().addLog("normal", `Injecting security headers into ${viteConfig}...`);
+        const raw = await this.readFile(viteConfig) as Uint8Array;
+        const content = new TextDecoder().decode(raw);
+        
+        const headers = `
+    headers: {
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization',
+    },
+    cors: true,
+    host: true,
+    strictPort: true,`;
+
+        let updated = content;
+        if (!content.includes('Cross-Origin-Resource-Policy')) {
+            if (content.includes('server: {')) {
+                updated = content.replace('server: {', `server: { ${headers}`);
+            } else if (content.includes('defineConfig({')) {
+                updated = content.replace('defineConfig({', `defineConfig({ server: { ${headers} },`);
+            } else if (content.includes('export default {')) {
+                updated = content.replace('export default {', `export default { server: { ${headers} },`);
+            }
+        }
+        
+        if (updated !== content) {
+            await this.writeFile(viteConfig, updated);
+        }
+      }
+
+      // 2. Handle Next.js
+      const nextConfig = files.find(f => f.startsWith('next.config.'));
+      if (nextConfig) {
+        useLogStore.getState().addLog("normal", `Injecting security headers into ${nextConfig}...`);
+        const raw = await this.readFile(nextConfig) as Uint8Array;
+        const content = new TextDecoder().decode(raw);
+
+        const nextHeaders = `
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+      },
+    ];
+  },`;
+
+        if (!content.includes('Cross-Origin-Resource-Policy')) {
+            let updated = content;
+            if (content.includes('const nextConfig = {')) {
+                updated = content.replace('const nextConfig = {', `const nextConfig = { ${nextHeaders}`);
+            } else if (content.includes('module.exports = {')) {
+                updated = content.replace('module.exports = {', `module.exports = { ${nextHeaders}`);
+            } else if (content.includes('export default {')) {
+                updated = content.replace('export default {', `export default { ${nextHeaders}`);
+            }
+
+            if (updated !== content) {
+                await this.writeFile(nextConfig, updated);
+            }
+        }
+      }
+    } catch (e) {
+      console.warn("Header injection skipped:", e);
+    }
+  }
+
   public runTerminalCommand = async (input: string, type?: string) => {
     try {
-      const parts = input.trim().split(" ");
+      const trimmed = input.trim();
+      if (trimmed === "integrity-check") {
+          await this.debugLogFiles();
+          return 0;
+      }
+
+      const parts = trimmed.split(" ");
       if (parts.length === 0 || parts[0] === "") return;
       let [command, ...arg]: [string, ...string[]] = parts as [
         string,
@@ -413,28 +505,20 @@ export class hostContainer {
       terminalOutput.output.pipeTo(
         new WritableStream({
           write: (data) => {
-            if (!data.trim()) return;
-            this.tml?.write(data);
+            if (this.tml) this.tml.write(data.replace(/\n/g, '\r\n'));
             console.log(data);
           },
         })
       );
       let output = await terminalOutput.exit;
-      if (output == 1) {
-        useLogStore
-          .getState()
-          .addLog("error", `error running terminal command`);
-      } else {
-        useLogStore.getState().addLog("normal", `terminal command successfull`);
-      }
       return output;
     } catch (error) {
-      useLogStore.getState().addLog("error", `run terminal internal error`);
+      useLogStore.getState().addLog("error", `command execution failed internally`);
       throw (error as Error).message;
     }
   };
 
-  public writeFile = async (filePath: string, content: string) => {
+  public writeFile = async (filePath: string, content: string | Uint8Array | ArrayBuffer) => {
     const normalized = filePath.replace(/\/+/g, "/");
     const parts = normalized.split("/");
     const dirs = parts.slice(0, -1);
@@ -450,7 +534,8 @@ export class hostContainer {
       }
     }
 
-    await this.wc.fs.writeFile(normalized, content, { encoding: "utf-8" });
+    const finalContent = content instanceof ArrayBuffer ? new Uint8Array(content) : content;
+    await this.wc.fs.writeFile(normalized, finalContent);
   };
 
   public async getFilesName(path: string): Promise<string[]> {
@@ -460,30 +545,8 @@ export class hostContainer {
     const shouldExclude = (name: string) =>
       this.excludePatterns.some((pattern) => pattern.test(name));
 
-    const mediaExts = [
-      "png",
-      "jpg",
-      "jpeg",
-      "gif",
-      "webp",
-      "bmp",
-      "ico",
-      "mp4",
-      "webm",
-      "ogg",
-      "mp3",
-      "wav",
-      "pdf",
-    ];
-
-    const isImageFile = (name: string) => {
-      const ext = name.split(".").pop()?.toLowerCase() || "";
-      return mediaExts.includes(ext);
-    };
-
     for (const entry of entries) {
       if (shouldExclude(entry.name)) continue;
-      if (!entry.isDirectory() && isImageFile(entry.name)) continue;
 
       const fullPath = `${path === "/" ? "" : path}/${entry.name}`;
       if (entry.isDirectory()) {
@@ -496,10 +559,12 @@ export class hostContainer {
     return files;
   }
 
-  public readFile = async (path: string) => {
-    // Clean path (remove leading // or /)
+  public readFile = async (path: string, encoding?: string) => {
     const cleanPath = path.replace(/^\/+/, "");
-    return await this.wc.fs.readFile(cleanPath, "utf8");
+    if (encoding === 'utf8') {
+        return await this.wc.fs.readFile(cleanPath, "utf8");
+    }
+    return await this.wc.fs.readFile(cleanPath);
   };
 
   public downloadFile(filepath: string, content: string) {
@@ -522,7 +587,7 @@ export class hostContainer {
 
   private async detectFramework() {
     try {
-      const packageJsonContent = await this.readFile("package.json");
+      const packageJsonContent = await this.readFile("package.json", 'utf8') as string;
       const pkg = JSON.parse(packageJsonContent);
       const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
@@ -541,6 +606,21 @@ export class hostContainer {
       } else if (deps["@sveltejs/kit"]) {
         useLogStore.getState().addLog("normal", "Framework detected: SvelteKit");
         this.metadata.outFolder = this.metadata.outFolder || ".svelte-kit";
+      } else if (deps["@remix-run/dev"] || deps["@remix-run/node"]) {
+        useLogStore.getState().addLog("normal", "Framework detected: Remix");
+        this.metadata.outFolder = this.metadata.outFolder || "build";
+      } else if (deps.astro) {
+        useLogStore.getState().addLog("normal", "Framework detected: Astro");
+        this.metadata.outFolder = this.metadata.outFolder || "dist";
+      } else if (deps.lit) {
+        useLogStore.getState().addLog("normal", "Framework detected: Lit");
+        this.metadata.outFolder = this.metadata.outFolder || "dist";
+      } else if (deps["ember-source"]) {
+        useLogStore.getState().addLog("normal", "Framework detected: Ember");
+        this.metadata.outFolder = this.metadata.outFolder || "dist";
+      } else if (deps["solid-js"] || deps["@solidjs/start"]) {
+        useLogStore.getState().addLog("normal", "Framework detected: SolidJS");
+        this.metadata.outFolder = this.metadata.outFolder || "dist";
       }
     } catch (e) {
       console.warn("Could not detect framework:", e);
@@ -548,69 +628,57 @@ export class hostContainer {
   }
 
   public async DeployToProduction() {
-    let configFile = "vite.config.js";
     try {
-      await this.wc.fs.readFile(configFile);
-    } catch {
-      configFile = "vite.config.ts";
-      try {
-        await this.wc.fs.readFile(configFile);
-      } catch {
-        useLogStore.getState().addLog("error", "Error: Not a Vite project");
-        return { success: false, error: "Not a Vite project" };
-      }
-    }
-
-
-    try {
-      useLogStore.getState().addLog("normal", "Building Project...");
+      useLogStore.getState().addLog("normal", "Initiating production build...");
       const start = performance.now();
-      await this.runTerminalCommand(
+      const code = await this.runTerminalCommand(
         this.metadata.buildCommand || "npm run build"
       );
+      
+      if (code === 1) {
+        useLogStore.getState().addLog("error", "Build process failed.");
+        return { success: false, error: "Build failed" };
+      }
+
       const buildTime = performance.now() - start;
-      useLogStore
-        .getState()
-        .addLog("normal", `Build Time: ${buildTime.toFixed(2)}ms`);
+      useLogStore.getState().addLog("normal", `Build successful in ${(buildTime / 1000).toFixed(2)}s`);
       this.metadata.buildtime = buildTime;
     } catch (error) {
-      useLogStore.getState().addLog("error", "Error Building project");
-      console.error("Error while building project:", error);
+      useLogStore.getState().addLog("error", "Unexpected error during build");
       return { success: false, error: "Build failed" };
     }
 
     try {
-      useLogStore.getState().addLog("normal", "Making files compatible...");
+      useLogStore.getState().addLog("normal", "Optimizing assets...");
       await this.parseIndex();
     } catch (error) {
-      useLogStore.getState().addLog("error", "Error making files compatible");
-      console.error("Error while parsing index:", error);
-      return { success: false, error: "Index parse failed" };
+      // Optimization is optional, don't fail deployment
     }
 
     try {
-      useLogStore.getState().addLog("normal", "Uploading files to cloud...");
+      useLogStore.getState().addLog("normal", "Uploading build to cloud...");
       await this._filesCloudUpload();
       return { success: true };
     } catch (error) {
-      useLogStore.getState().addLog("error", "Error uploading files to cloud");
-      console.error("Error while uploading files:", error);
-      return { success: true };
+      useLogStore.getState().addLog("error", "Cloud upload failed.");
+      return { success: false, error: "Upload failed" };
     }
   }
 
   public async parseIndex() {
-    let html = await this.readFile(`./${this.metadata.outFolder}/index.html`);
-    // const buildFolder = folders.find(name =>
-    //   ["dist", "build", "out"].includes(name)
-    // ) || "dist";
+    try {
+      const indexPath = `${this.metadata.outFolder || "dist"}/index.html`.replace(/\/+/g, "/");
+      let html = await this.readFile(indexPath, 'utf8') as string;
 
-    html = html.replace(
-      /(href|src)=["']\/([^"']+)["']/g,
-      (_, attr, path) => `${attr}="./${path}"`
-    );
-    await this.writeFile(`./${this.metadata.outFolder || "dist"}/index.html`, html);
-    // this.downloadFile('./dist/index.html', html)
+      // Relative path optimization for common static hostings
+      html = html.replace(
+        /(href|src)=["']\/([^"']+)["']/g,
+        (_, attr, path) => `${attr}="./${path}"`
+      );
+      await this.writeFile(indexPath, html);
+    } catch (e) {
+      useLogStore.getState().addLog("warn", "Optimization: No index.html found in output folder.");
+    }
   }
 
   private async _filesCloudUpload() {

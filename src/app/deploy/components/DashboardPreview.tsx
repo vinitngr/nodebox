@@ -1,12 +1,11 @@
 "use client";
 
 import Window from "@/components/WindowOS";
-import { Badge } from "@/components/ui/badge";
-import { ExternalLink, RotateCcw, Monitor } from "lucide-react";
+import { ExternalLink, RotateCcw } from "lucide-react";
 
 interface DashboardPreviewProps {
   containerUrl: string | undefined;
-  iframeRef: React.RefObject<HTMLIFrameElement>;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
   sandboxReady: boolean;
   phase: string;
   projectName: string;
@@ -20,7 +19,7 @@ export function DashboardPreview({
   projectName,
 }: DashboardPreviewProps) {
   return (
-    <div className="flex flex-col h-[calc(100vh-160px)] max-h-[850px] border border-zinc-800 rounded bg-zinc-950 overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-[calc(100vh-160px)] max-h-[850px] border border-zinc-800 bg-zinc-950 overflow-hidden shadow-2xl">
       {/* Browser Bar */}
       <div className="h-10 border-b border-zinc-800 bg-zinc-900/50 flex items-center px-4 gap-4">
         <div className="flex gap-1.5">
@@ -64,17 +63,6 @@ export function DashboardPreview({
                 <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Initialising Preview</p>
             </div>
         )}
-      </div>
-      
-      {/* Status Bar */}
-      <div className="h-8 border-t border-zinc-800 bg-black flex items-center px-4 justify-between">
-         <div className="flex items-center gap-2">
-            <Monitor className="h-3 w-3 text-zinc-600" />
-            <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-tight">Virtual Display : 0</span>
-         </div>
-         <div className="text-[9px] text-zinc-700 font-mono">
-            NODEBOX_CORE_v1.6
-         </div>
       </div>
     </div>
   );

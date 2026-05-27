@@ -3,7 +3,6 @@ import React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useLogStore } from "@/store/logs";
 import "@xterm/xterm/css/xterm.css";
-import { useSession } from "next-auth/react";
 import { hostContainer } from "@/lib/webContainer";
 import { parseGitHubUrl } from "@/lib/githubUtils";
 
@@ -50,7 +49,6 @@ export default function ProjectDeploy() {
   const [executionTime, setexexecutionTime] = useState<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const termRef = useRef<HTMLDivElement>(null);
-  const { data: session, status } = useSession();
   const logs = useLogStore((s) => s.logs);
   const [ProductionDone, setProductionDone] = useState(false);
 
@@ -240,8 +238,6 @@ export default function ProjectDeploy() {
     }
   };
 
-  if (status === "loading") return null;
-
   if (phase === "form") {
     return (
         <DeploymentForm 
@@ -278,7 +274,6 @@ export default function ProjectDeploy() {
             files={files}
             setFiles={setFiles}
             folderRef={folderRef}
-            session={session}
             isFolderModalOpen={isFolderModalOpen}
             setIsFolderModalOpen={setIsFolderModalOpen}
         />

@@ -7,25 +7,31 @@ export async function GET(request: Request) {
   const repo = searchParams.get('repo');
   let branch = searchParams.get('branch')
 
-  console.log('getting');
   if (!user || !repo || !branch) {
-    return NextResponse.json({ error: 'Missing query params' }, { status: 400 });
+    return new Response(JSON.stringify({ error: 'Missing query params' }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
   
   const zipUrl = `https://codeload.github.com/${user}/${repo}/zip/refs/heads/${branch || 'main'}`;
-  console.log('zipped');
   
   try {
-    const response = await axios.get(zipUrl, { responseType: 'arraybuffer' });
-    console.log('got');
-    return new Response(response.data, {
+    const response = await fetch(zipUrl);
+    if (!response.ok) throw new Error('GitHub fetch failed');
+    
+    const buffer = await response.arrayBuffer();
+    return new Response(new Uint8Array(buffer), {
       status: 200,
-      statusText: 'OK',
       headers: {
         'Content-Type': 'application/zip',
+        'Cache-Control': 'no-store, max-age=0',
       }      
     });
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch zip' }, { status: 500 });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to fetch zip' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

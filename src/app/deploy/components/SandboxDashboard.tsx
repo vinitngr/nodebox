@@ -24,13 +24,13 @@ interface SandboxDashboardProps {
   setPhase: (phase: any) => void;
   sandboxReady: boolean;
   containerUrl: string | undefined;
-  iframeRef: React.RefObject<HTMLIFrameElement>;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
   logs: Log[];
   host: hostContainer | null;
   terminalInput: string;
   setTerminalInput: (val: string) => void;
   handleTerminalKeyPress: (e: React.KeyboardEvent) => void;
-  termRef: React.RefObject<HTMLDivElement>;
+  termRef: React.RefObject<HTMLDivElement | null>;
   executionTime: number | null;
   buildCommand: string;
   outFolder: string;
@@ -71,11 +71,11 @@ export function SandboxDashboard({
     <div className="min-h-screen bg-black text-zinc-300 font-sans selection:bg-zinc-700">
       {/* Minimal Header */}
       <header className="border-b border-zinc-900 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-[1440px] mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setPhase("form")}
-              className="p-1 hover:bg-zinc-900 rounded text-zinc-500 hover:text-zinc-200 transition-colors"
+              className="p-1 hover:bg-zinc-900 text-zinc-500 hover:text-zinc-200 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -84,7 +84,7 @@ export function SandboxDashboard({
                <h1 className="text-sm font-semibold text-white tracking-tight">
                 {projectName}
                </h1>
-               <Badge variant="outline" className="text-[10px] h-4 bg-zinc-900 border-zinc-800 text-zinc-500 px-1 font-mono">
+               <Badge variant="outline" className="text-[10px] h-4 bg-zinc-900 border-zinc-800 text-zinc-500 px-1 font-mono rounded-none">
                   PROD-READY
                </Badge>
             </div>
@@ -92,7 +92,7 @@ export function SandboxDashboard({
 
           <div className="flex items-center gap-4">
              {sandboxReady && (
-                <div className="flex items-center gap-2 px-2 py-0.5 rounded border border-zinc-800 bg-zinc-900/30">
+                <div className="flex items-center gap-2 px-2 py-0.5 border border-zinc-800 bg-zinc-900/30">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     <span className="text-[10px] text-zinc-500 font-medium">SANDBOX ACTIVE</span>
                 </div>
@@ -104,7 +104,7 @@ export function SandboxDashboard({
         </div>
 
         {/* Tab Navigation - Aligned Left */}
-        <div className="max-w-[1600px] mx-auto px-4">
+        <div className="max-w-[1440px] mx-auto px-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-transparent h-10 p-0 gap-6 flex justify-start border-none">
               <TabsTrigger 
@@ -129,7 +129,7 @@ export function SandboxDashboard({
                 value="logs" 
                 className="data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-white data-[state=active]:shadow-none rounded-none h-full px-0 text-zinc-500 font-medium text-xs transition-none shadow-none focus-visible:ring-0 border-x-0 border-t-0"
               >
-                Logs
+                Logs & Terminal
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -137,7 +137,7 @@ export function SandboxDashboard({
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-[1600px] mx-auto px-4 py-6">
+      <main className="max-w-[1440px] mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsContent value="overview" className="mt-0 outline-none">
             <DeploymentOverview 
@@ -150,6 +150,9 @@ export function SandboxDashboard({
                downloadFolder={downloadFolder}
                phase={phase}
                productionDone={productionDone}
+               containerUrl={containerUrl}
+               iframeRef={iframeRef}
+               sandboxReady={sandboxReady}
             />
           </TabsContent>
 

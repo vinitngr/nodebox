@@ -27,7 +27,6 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { parseGitHubUrl } from "@/lib/githubUtils"
-import SignInPage from "@/components/SignIn"
 
 interface DeploymentFormProps {
     sourceType: "github" | "folder";
@@ -62,8 +61,7 @@ interface DeploymentFormProps {
     startSandbox: () => Promise<void>;
     files: FileList | null;
     setFiles: (files: FileList | null) => void;
-    folderRef: React.RefObject<HTMLInputElement>;
-    session: any;
+    folderRef: React.RefObject<HTMLInputElement | null>;
     isFolderModalOpen: boolean;
     setIsFolderModalOpen: (open: boolean) => void;
 }
@@ -75,7 +73,7 @@ export function DeploymentForm(props: DeploymentFormProps) {
         setRootFolder, repoFolders, loadingTree, expandedFolders, setExpandedFolders,
         repoFiles, projectName, setProjectName, description, setDescription,
         rundev, setRundev, buildCommand, setBuildCommand, outFolder, setoutFolder,
-        envList, setEnvList, startSandbox, files, setFiles, folderRef, session,
+        envList, setEnvList, startSandbox, files, setFiles, folderRef,
         isFolderModalOpen, setIsFolderModalOpen
     } = props;
 
@@ -121,214 +119,277 @@ export function DeploymentForm(props: DeploymentFormProps) {
     };
 
     return (
-        <div className="mt-8 p-1 mb-5 max-w-[95%] md:max-w-[80%] m-auto">
-            <div className="max-w-7xl pt-20 mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Zap className="h-6 w-6 text-blue-400" />
-                            <h1 className="text-2xl font-bold text-white">Deploy Project</h1>
-                        </div>
-                        <p className="text-zinc-400">Deploy your project from GitHub or upload files to a modern sandbox.</p>
-                    </div>
-                    <div className="relative">
-                        <Card className="bg-zinc-900/50 border-zinc-800 text-white shadow-2xl">
-                            <CardHeader className="pb-4 border-b border-zinc-800">
-                                <CardTitle className="flex items-center gap-2 text-white">
-                                    <Settings className="h-5 w-5 text-zinc-400" />
-                                    Project Configuration
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <ScrollArea className="h-[calc(100vh-240px)]">
-                                    <div className="space-y-6 pr-4">
-                                        {/* Import Source */}
-                                        <div className="space-y-3">
-                                            <Label className="text-white font-medium">Import Source</Label>
-                                            <Tabs value={sourceType} onValueChange={(v: any) => setSourceType(v)}>
-                                                <TabsList className="grid w-full grid-cols-2 bg-zinc-800 border-zinc-700">
-                                                    <TabsTrigger value="github" className="flex items-center gap-2 text-zinc-300">
-                                                        <Github className="h-4 w-4" /> GitHub
-                                                    </TabsTrigger>
-                                                    <TabsTrigger value="folder" className="flex items-center gap-2 text-zinc-300">
-                                                        <Folder className="h-4 w-4" /> Upload
-                                                    </TabsTrigger>
-                                                </TabsList>
+        <div className="min-h-screen bg-black text-zinc-300 font-sans selection:bg-zinc-700 pt-32 pb-20 px-4">
+            <div className="max-w-3xl mx-auto space-y-12">
+                {/* Header Section */}
+                <div className="space-y-4">
+                    <h1 className="text-2xl font-bold text-white tracking-tighter uppercase">Deploy New Project</h1>
+                    <div className="h-px w-full bg-zinc-900" />
+                </div>
 
-                                                <TabsContent value="github" className="space-y-4 mt-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="github-url" className="text-white font-medium">Repository URL</Label>
-                                                        <Input 
-                                                            id="github-url" 
-                                                            placeholder="https://github.com/username/repository" 
-                                                            value={githubUrl}
-                                                            onChange={(e) => setGithubUrl(e.target.value)}
-                                                            className="bg-zinc-800 border-zinc-700"
-                                                        />
-                                                    </div>
-
-                                                    {parseGitHubUrl(githubUrl) && (
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-                                                            <div className="space-y-1.5">
-                                                                <Label className="text-zinc-400 text-xs font-medium ml-1">Branch</Label>
-                                                                <Select value={branch} onValueChange={setBranch}>
-                                                                    <SelectTrigger className="bg-zinc-800 border-zinc-700 h-10">
-                                                                        {loadingBranches ? "Loading..." : <SelectValue />}
-                                                                    </SelectTrigger>
-                                                                    <SelectContent className="bg-zinc-800 border-zinc-700">
-                                                                        {branches.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                                                                        <SelectItem value="custom">Custom...</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                {branch === "custom" && (
-                                                                    <Input 
-                                                                        placeholder="Branch name" 
-                                                                        value={customBranch}
-                                                                        onChange={(e) => setCustomBranch(e.target.value)}
-                                                                        className="bg-zinc-800 border-zinc-700 mt-1.5 h-10"
-                                                                    />
-                                                                )}
-                                                            </div>
-
-                                                            <div className="space-y-1.5 relative">
-                                                                <Label className="text-zinc-400 text-xs font-medium ml-1">Root Directory</Label>
-                                                                <Button 
-                                                                    variant="outline" 
-                                                                    onClick={() => setIsFolderModalOpen(!isFolderModalOpen)}
-                                                                    className="w-full bg-zinc-800 border-zinc-700 justify-between h-10 font-normal px-3"
-                                                                >
-                                                                    <div className="flex items-center gap-2 truncate">
-                                                                        <Folder className="h-4 w-4 text-zinc-500 shrink-0" />
-                                                                        <span className="truncate">{rootFolder || "Project Root"}</span>
-                                                                    </div>
-                                                                    <ChevronDown className="h-4 w-4 text-zinc-500 shrink-0" />
-                                                                </Button>
-
-                                                                {isFolderModalOpen && (
-                                                                    <>
-                                                                        <div className="fixed inset-0 z-[90]" onClick={() => setIsFolderModalOpen(false)} />
-                                                                        <div className="absolute top-full left-0 right-0 mt-2 z-[100] bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden origin-top">
-                                                                            <ScrollArea className="h-64 bg-zinc-950">
-                                                                                <div className="p-2">
-                                                                                    {loadingTree ? <div className="p-8 text-center text-zinc-500">Loading...</div> : (
-                                                                                        (() => {
-                                                                                            const renderNode = (item: any, depth = 0) => {
-                                                                                                const isExpanded = expandedFolders.has(item.path);
-                                                                                                const hasChildren = item.children.length > 0;
-                                                                                                const framework = getFolderFramework(item.path);
-                                                                                                return (
-                                                                                                    <div key={item.path} className="space-y-0.5">
-                                                                                                        <div 
-                                                                                                            className={cn("flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm", rootFolder === item.path ? "bg-blue-600 text-white" : "hover:bg-zinc-800 text-zinc-300")}
-                                                                                                            style={{ paddingLeft: `${depth * 12 + 8}px` }}
-                                                                                                            onClick={() => { setRootFolder(item.path); if(!hasChildren) setIsFolderModalOpen(false); }}
-                                                                                                        >
-                                                                                                            {hasChildren ? (isExpanded ? <ChevronDown className="w-3 h-3" onClick={(e) => { e.stopPropagation(); toggleFolder(item.path); }} /> : <ChevronRight className="w-3 h-3" onClick={(e) => { e.stopPropagation(); toggleFolder(item.path); }} />) : <div className="w-3" />}
-                                                                                                            <Folder className="w-3.5 h-3.5 text-zinc-500" />
-                                                                                                            <span className="truncate flex-1">{item.name === "Root" ? "Project Root" : item.name}</span>
-                                                                                                            {framework && <Badge className="text-[9px] bg-blue-900/40">{framework}</Badge>}
-                                                                                                        </div>
-                                                                                                        {isExpanded && item.children.map((c: any) => renderNode(c, depth + 1))}
-                                                                                                    </div>
-                                                                                                );
-                                                                                            };
-                                                                                            return renderNode(buildTree(repoFolders));
-                                                                                        })()
-                                                                                    )}
-                                                                                </div>
-                                                                            </ScrollArea>
-                                                                        </div>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </TabsContent>
-
-                                                <TabsContent value="folder" className="mt-4">
-                                                    <div 
-                                                        className="border-2 border-dashed border-zinc-700 rounded-lg p-8 text-center hover:border-zinc-600 bg-zinc-900 transition-all cursor-pointer"
-                                                        onClick={() => folderRef.current?.click()}
-                                                    >
-                                                        <input id="filefolder" type="file" multiple ref={folderRef} onChange={(e) => setFiles(e.target.files)} webkitdirectory="true" className="hidden" />
-                                                        <Upload className="h-12 w-12 mx-auto mb-4 text-zinc-500" />
-                                                        <p className="text-lg font-medium text-white">Drop project folder</p>
-                                                        {files && <div className="mt-2 text-blue-400 font-bold">{files.length} files selected</div>}
-                                                    </div>
-                                                </TabsContent>
-                                            </Tabs>
-                                        </div>
-
-                                        <Separator className="bg-zinc-800" />
-
-                                        {/* Project Info */}
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="project-name">Project Name</Label>
-                                                <Input id="project-name" value={projectName} onChange={(e) => setProjectName(e.target.value)} className="bg-zinc-800 border-zinc-700" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="description">Description (Optional)</Label>
-                                                <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-zinc-800 border-zinc-700 resize-none" rows={3} />
-                                            </div>
-                                        </div>
-
-                                        <Separator className="bg-zinc-800" />
-
-                                        {/* Build Settings */}
-                                        <div className="space-y-4">
-                                            <h3 className="font-semibold flex items-center gap-2 text-white">
-                                                <Code className="h-4 w-4 text-zinc-400" /> Build Settings
-                                            </h3>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label>Run Command</Label>
-                                                    <Input value={rundev} onChange={(e) => setRundev(e.target.value)} className="bg-zinc-800 border-zinc-700" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Build Command</Label>
-                                                    <Input value={buildCommand} onChange={(e) => setBuildCommand(e.target.value)} className="bg-zinc-800 border-zinc-700" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Output Directory</Label>
-                                                <Input value={outFolder} onChange={(e) => setoutFolder(e.target.value)} className="bg-zinc-800 border-zinc-700" />
-                                            </div>
-                                        </div>
-
-                                        <Separator className="bg-zinc-800" />
-
-                                        {/* Env Vars */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <Label>Environment Variables</Label>
-                                                <Button size="sm" variant="outline" onClick={() => setEnvList([...envList, { key: "", value: "" }])} className="bg-zinc-800 border-zinc-700">
-                                                    <Plus className="h-3 w-3 mr-1" /> Add
-                                                </Button>
-                                            </div>
-                                            {envList.map((env, i) => (
-                                                <div key={i} className="flex gap-2">
-                                                    <Input placeholder="KEY" value={env.key} onChange={(e) => handleEnvChange(i, "key", e.target.value)} className="bg-zinc-800 border-zinc-700 flex-1 h-9 text-xs" />
-                                                    <Input placeholder="Value" value={env.value} onChange={(e) => handleEnvChange(i, "value", e.target.value)} className="bg-zinc-800 border-zinc-700 flex-1 h-9 text-xs" />
-                                                    <Button size="icon" variant="ghost" onClick={() => setEnvList(envList.filter((_, idx) => idx !== i))} className="h-9 w-9 text-zinc-500 hover:text-red-400">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <Button onClick={startSandbox} disabled={!projectName} className="w-full bg-blue-600 hover:bg-blue-700 py-6 text-lg font-bold shadow-lg shadow-blue-600/20" size="lg">
-                                            <Play className="h-5 w-5 mr-2 fill-current" /> Deploy to Sandbox
-                                        </Button>
-                                    </div>
-                                </ScrollArea>
-                            </CardContent>
-                        </Card>
-                        {!session && (
-                            <div className="h-full w-full border border-white/10 rounded-2xl bg-black/40 backdrop-blur-sm absolute top-0 right-0 z-50">
-                                <SignInPage />
+                <div className="relative">
+                    <div className="border border-zinc-800 bg-zinc-950 shadow-2xl">
+                        <div className="border-b border-zinc-900 bg-zinc-900/20 px-8 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Settings className="h-4 w-4 text-zinc-500" />
+                                <span className="text-xs font-bold text-white uppercase tracking-widest">
+                                    Configuration
+                                </span>
                             </div>
-                        )}
+                            <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 bg-zinc-700" />
+                                <div className="h-1.5 w-1.5 bg-zinc-700" />
+                                <div className="h-1.5 w-1.5 bg-zinc-700" />
+                            </div>
+                        </div>
+                        
+                        <div className="p-8 space-y-12">
+                            {/* Import Source Section */}
+                            <section className="space-y-6">
+                                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">01 — Source</h3>
+                                
+                                <Tabs value={sourceType} onValueChange={(v: any) => setSourceType(v)} className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2 bg-black border border-zinc-900 p-0 h-10 rounded-none">
+                                        <TabsTrigger 
+                                            value="github" 
+                                            className="data-[state=active]:bg-zinc-900 data-[state=active]:text-white rounded-none text-zinc-600 text-[10px] font-bold uppercase tracking-widest transition-none shadow-none"
+                                        >
+                                            GitHub
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                            value="folder" 
+                                            className="data-[state=active]:bg-zinc-900 data-[state=active]:text-white rounded-none text-zinc-600 text-[10px] font-bold uppercase tracking-widest transition-none shadow-none"
+                                        >
+                                            Upload
+                                        </TabsTrigger>
+                                    </TabsList>
+
+                                    <TabsContent value="github" className="space-y-6 pt-6 mt-0">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="github-url" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Repository URL</Label>
+                                            <Input 
+                                                id="github-url" 
+                                                placeholder="github.com/user/repo" 
+                                                value={githubUrl}
+                                                onChange={(e) => setGithubUrl(e.target.value)}
+                                                className="bg-black border-zinc-800 focus:border-white rounded-none h-10 text-xs text-zinc-300 transition-colors placeholder:text-zinc-800"
+                                            />
+                                        </div>
+
+                                        {parseGitHubUrl(githubUrl) && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Branch</Label>
+                                                    <Select value={branch} onValueChange={setBranch}>
+                                                        <SelectTrigger className="bg-black border-zinc-800 rounded-none h-10 text-xs text-zinc-400">
+                                                            {loadingBranches ? "fetching..." : <SelectValue />}
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-zinc-950 border-zinc-800 rounded-none text-zinc-400">
+                                                            {branches.map((b) => <SelectItem key={b} value={b} className="text-xs rounded-none">{b}</SelectItem>)}
+                                                            <SelectItem value="custom" className="text-xs rounded-none">Custom...</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {branch === "custom" && (
+                                                        <Input 
+                                                            placeholder="branch-name" 
+                                                            value={customBranch}
+                                                            onChange={(e) => setCustomBranch(e.target.value)}
+                                                            className="bg-black border-zinc-800 rounded-none mt-2 h-10 text-xs text-zinc-300"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-2 relative">
+                                                    <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Root</Label>
+                                                    <Button 
+                                                        variant="outline" 
+                                                        onClick={() => setIsFolderModalOpen(!isFolderModalOpen)}
+                                                        className="w-full bg-black border-zinc-800 rounded-none justify-between h-10 font-bold px-3 hover:bg-zinc-900 transition-colors text-xs text-zinc-400"
+                                                    >
+                                                        <span className="truncate">{rootFolder || "./"}</span>
+                                                        <ChevronDown className="h-3 w-3 text-zinc-600 shrink-0" />
+                                                    </Button>
+
+                                                    {isFolderModalOpen && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-[90]" onClick={() => setIsFolderModalOpen(false)} />
+                                                            <div className="absolute top-full left-0 right-0 mt-1 z-[100] bg-zinc-950 border border-zinc-800 rounded-none shadow-2xl overflow-hidden">
+                                                                <ScrollArea className="h-64 bg-zinc-950">
+                                                                    <div className="p-1">
+                                                                        {loadingTree ? <div className="p-8 text-center text-zinc-700 text-[10px] font-bold uppercase tracking-widest">Scanning...</div> : (
+                                                                            (() => {
+                                                                                const renderNode = (item: any, depth = 0) => {
+                                                                                    const isExpanded = expandedFolders.has(item.path);
+                                                                                    const hasChildren = item.children.length > 0;
+                                                                                    return (
+                                                                                        <div key={item.path}>
+                                                                                            <div 
+                                                                                                className={cn(
+                                                                                                    "flex items-center gap-2 px-3 py-2 cursor-pointer text-[11px] transition-colors", 
+                                                                                                    rootFolder === item.path ? "bg-white text-black" : "hover:bg-zinc-900 text-zinc-500"
+                                                                                                )}
+                                                                                                style={{ paddingLeft: `${depth * 12 + 12}px` }}
+                                                                                                onClick={() => { setRootFolder(item.path); if(!hasChildren) setIsFolderModalOpen(false); }}
+                                                                                            >
+                                                                                                {hasChildren && (
+                                                                                                    <div onClick={(e) => { e.stopPropagation(); toggleFolder(item.path); }}>
+                                                                                                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                                                                                    </div>
+                                                                                                )}
+                                                                                                <span className="truncate font-bold uppercase tracking-wider">{item.name === "Root" ? "Project Root" : item.name}</span>
+                                                                                            </div>
+                                                                                            {isExpanded && item.children.map((c: any) => renderNode(c, depth + 1))}
+                                                                                        </div>
+                                                                                    );
+                                                                                };
+                                                                                return renderNode(buildTree(repoFolders));
+                                                                            })()
+                                                                        )}
+                                                                    </div>
+                                                                </ScrollArea>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </TabsContent>
+
+                                    <TabsContent value="folder" className="mt-0 pt-6">
+                                        <div 
+                                            className="border border-zinc-900 rounded-none p-12 text-center hover:bg-zinc-900/30 bg-black transition-colors cursor-pointer group"
+                                            onClick={() => folderRef.current?.click()}
+                                        >
+                                            <input id="filefolder" type="file" multiple ref={folderRef} onChange={(e) => setFiles(e.target.files)} {...{ webkitdirectory: "true" }} className="hidden" />
+                                            <Upload className="h-6 w-6 text-zinc-700 mx-auto mb-4 group-hover:text-white transition-colors" />
+                                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Select Local Directory</p>
+                                            {files && (
+                                                <div className="mt-4 text-white text-[10px] font-black uppercase tracking-widest bg-zinc-900 px-3 py-1 inline-block">
+                                                    {files.length} Files Ready
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TabsContent>
+                                </Tabs>
+                            </section>
+
+                            {/* Project Details Section */}
+                            <section className="space-y-6">
+                                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">02 — Details</h3>
+                                
+                                <div className="grid grid-cols-1 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="project-name" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Project Name</Label>
+                                        <Input 
+                                            id="project-name" 
+                                            placeholder="project-slug"
+                                            value={projectName} 
+                                            onChange={(e) => setProjectName(e.target.value)} 
+                                            className="bg-black border-zinc-800 rounded-none h-10 text-xs text-zinc-300 placeholder:text-zinc-800" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="description" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Description</Label>
+                                        <Textarea 
+                                            id="description" 
+                                            placeholder="Optional project description"
+                                            value={description} 
+                                            onChange={(e) => setDescription(e.target.value)} 
+                                            className="bg-black border-zinc-800 rounded-none resize-none text-xs text-zinc-300 p-4 min-h-[100px] placeholder:text-zinc-800" 
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            {/* Build Section */}
+                            <section className="space-y-6">
+                                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">03 — Build</h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Runtime</Label>
+                                        <Input 
+                                            value={rundev} 
+                                            onChange={(e) => setRundev(e.target.value)} 
+                                            className="bg-black border-zinc-800 rounded-none h-10 text-xs font-mono text-zinc-500" 
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Build</Label>
+                                        <Input 
+                                            value={buildCommand} 
+                                            onChange={(e) => setBuildCommand(e.target.value)} 
+                                            className="bg-black border-zinc-800 rounded-none h-10 text-xs font-mono text-zinc-500" 
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-0.5">Output</Label>
+                                    <Input 
+                                        value={outFolder} 
+                                        onChange={(e) => setoutFolder(e.target.value)} 
+                                        className="bg-black border-zinc-800 rounded-none h-10 text-xs font-mono text-zinc-500" 
+                                    />
+                                </div>
+                            </section>
+
+                            {/* Env Section */}
+                            <section className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">04 — Environment</h3>
+                                    <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        onClick={() => setEnvList([...envList, { key: "", value: "" }])} 
+                                        className="text-[9px] font-bold text-zinc-600 hover:text-white rounded-none uppercase tracking-widest h-6 px-2"
+                                    >
+                                        + Add
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {envList.map((env, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <Input 
+                                                placeholder="KEY" 
+                                                value={env.key} 
+                                                onChange={(e) => handleEnvChange(i, "key", e.target.value)} 
+                                                className="bg-black border-zinc-800 rounded-none flex-1 h-10 text-[10px] font-mono text-zinc-400 placeholder:text-zinc-900" 
+                                            />
+                                            <Input 
+                                                placeholder="VALUE" 
+                                                type="password"
+                                                value={env.value} 
+                                                onChange={(e) => handleEnvChange(i, "value", e.target.value)} 
+                                                className="bg-black border-zinc-800 rounded-none flex-1 h-10 text-[10px] font-mono text-zinc-400 placeholder:text-zinc-900" 
+                                            />
+                                            <Button 
+                                                size="icon" 
+                                                variant="ghost" 
+                                                onClick={() => setEnvList(envList.filter((_, idx) => idx !== i))} 
+                                                className="h-10 w-10 text-zinc-800 hover:text-white rounded-none transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* Submit Section */}
+                            <div className="pt-10">
+                                <Button 
+                                    onClick={startSandbox} 
+                                    disabled={!projectName || (sourceType === 'github' && !githubUrl)} 
+                                    className={cn(
+                                        "w-full h-14 rounded-none text-xs font-black uppercase tracking-[0.3em] transition-all",
+                                        !projectName ? "bg-zinc-900 text-zinc-700 border border-zinc-800 cursor-not-allowed" : "bg-white hover:bg-zinc-200 text-black"
+                                    )}
+                                >
+                                    Initialize Build
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
