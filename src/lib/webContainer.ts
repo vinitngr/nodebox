@@ -44,17 +44,16 @@ export class hostContainer {
       const { unzipSync, zipSync } = await import("fflate");
 
       try {
-        const match = this.url.match(
-          /^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/
-        );
-        if (!match) {
+        const parsed = (await import("@/lib/githubUtils")).parseGitHubUrl(this.url);
+        if (!parsed) {
           useLogStore
             .getState()
             .addLog("error", "error : Invalid GitHub URL format");
           throw new Error("invalid input URL");
         }
 
-        const apiUrl = `/api/github-zip?user=${match[1]}&repo=${match[2]
+        const { owner, repo } = parsed;
+        const apiUrl = `/api/github-zip?user=${owner}&repo=${repo
           }&branch=${this.metadata?.branch || "main"}`;
         let res: any;
 
@@ -64,7 +63,7 @@ export class hostContainer {
             .addLog(
               "normal",
               `> git clone --branch ${this.metadata?.branch || "main"
-              } https://github.com/${match[1]}/${match[2]}.git`
+              } https://github.com/${owner}/${repo}.git`
             );
           res = await axios.get(apiUrl, { responseType: "arraybuffer" });
         } catch (error) {
@@ -75,25 +74,37 @@ export class hostContainer {
         let zip = unzipSync(new Uint8Array(res.data));
 
         const containerFiles: ContainerFile | any = {};
-
         const mediaEntries: Record<string, Uint8Array> = {};
+
+        const rootFolder = this.metadata?.rootFolder?.replace(/^\/+|\/+$/g, ""); // Normalize: no leading/trailing slashes
+
         for (const [path, content] of Object.entries(zip)) {
           if (path.endsWith("/")) continue;
 
           const parts = path.split("/");
-          const root = parts.shift();
-          this.root = root;
+          const topLevel = parts.shift(); // The repo-branch/ folder
+          this.root = topLevel;
+
+          let filePath = parts.join("/");
+
+          // If rootFolder is specified, only include files inside it
+          if (rootFolder) {
+            if (!filePath.startsWith(rootFolder + "/")) continue;
+            filePath = filePath.substring(rootFolder.length + 1);
+          }
+
+          const subParts = filePath.split("/");
           let current = containerFiles;
-          for (let i = 0; i < parts.length - 1; i++) {
-            const dir = parts[i];
+          for (let i = 0; i < subParts.length - 1; i++) {
+            const dir = subParts[i];
             if (!current[dir]) current[dir] = { directory: {} };
             current = current[dir].directory;
           }
 
-          const fileName = parts[parts.length - 1];
-          const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav)$/i.test(path);
+          const fileName = subParts[subParts.length - 1];
+          const isMedia = /\.(png|jpe?g|gif|mp4|mp3|webm|ogg|wav|pdf)$/i.test(path);
           if (isMedia) {
-            current[fileName] = { file: { contents: 'media files not mounting' } };
+            current[fileName] = { file: { contents: content as Uint8Array } };
 
             const publicIndex = path.indexOf("public/");
             if (publicIndex !== -1) {
@@ -147,10 +158,10 @@ export class hostContainer {
           }
 
           const fileName = parts[parts.length - 1];
-          if (/\.(png|jpg|jpeg|gif|webp|bmp|ico)$/i.test(fileName)) {
+          if (/\.(png|jpg|jpeg|gif|webp|bmp|ico|mp4|mp3|webm|ogg|wav|pdf)$/i.test(fileName)) {
             const arrayBuffer = await file.arrayBuffer();
             const uint8array = new Uint8Array(arrayBuffer);
-            current[fileName] = { file: { contents: 'media files not mounting' } };
+            current[fileName] = { file: { contents: uint8array } };
 
             const publicIndex = fullPath.indexOf("public/");
             if (publicIndex !== -1) {
@@ -210,6 +221,8 @@ export class hostContainer {
       instance.metadata.buildCommand = input.metadata.buildCommand;
     if (input.metadata?.rundev)
       instance.metadata.rundev = input.metadata.rundev;
+    if (input.metadata?.rootFolder)
+      instance.metadata.rootFolder = input.metadata.rootFolder;
     instance.metadata.projectName = input.projectName;
     useLogStore.getState().addLog("normal", "project initialized: ");
     if (this.containerInstance) return this.containerInstance;
@@ -270,6 +283,8 @@ export class hostContainer {
       if (this.metadata.env) {
         this.writeFile(".env", this.metadata.env);
       }
+
+      await this.detectFramework();
 
       try {
         const timeoutId = setTimeout(() => {
@@ -339,19 +354,20 @@ export class hostContainer {
 
   private _installDependencies = async () => {
     try {
-
-      const installProcess = await this.wc.spawn("npm", ["install", "--legacy-peer-deps", "--no-fund", "--no-audit"]);
+      // Use --prefer-offline and a faster registry to mitigate slowness
+      const installProcess = await this.wc.spawn("npm", [
+        "install", 
+        "--legacy-peer-deps", 
+        "--no-fund", 
+        "--no-audit",
+        "--prefer-offline",
+        "--registry=https://registry.npmjs.org/"
+      ]);
+      
       installProcess.output.pipeTo(
         new WritableStream({
-          start() {
-            console.log(
-              "class affiliated : this.constructor.name : ",
-              this.constructor.name
-            );
-          },
           write: (data) => {
-            // this.tml?.write(data)
-            console.log(hostContainer.cleanOutput(data)); //or hostContainer.cleanOutput()
+            console.log(hostContainer.cleanOutput(data));
           },
         })
       );
@@ -469,7 +485,7 @@ export class hostContainer {
       if (shouldExclude(entry.name)) continue;
       if (!entry.isDirectory() && isImageFile(entry.name)) continue;
 
-      const fullPath = `${path}/${entry.name}`;
+      const fullPath = `${path === "/" ? "" : path}/${entry.name}`;
       if (entry.isDirectory()) {
         const nestedFiles = await this.getFilesName(fullPath);
         files.push(...nestedFiles);
@@ -481,7 +497,9 @@ export class hostContainer {
   }
 
   public readFile = async (path: string) => {
-    return await this.wc.fs.readFile(path, "utf8");
+    // Clean path (remove leading // or /)
+    const cleanPath = path.replace(/^\/+/, "");
+    return await this.wc.fs.readFile(cleanPath, "utf8");
   };
 
   public downloadFile(filepath: string, content: string) {
@@ -498,7 +516,35 @@ export class hostContainer {
   }
 
   public deleteFile(path: string) {
-    this.wc.fs.rm(path, { force: true });
+    const cleanPath = path.replace(/^\/+/, "");
+    this.wc.fs.rm(cleanPath, { force: true });
+  }
+
+  private async detectFramework() {
+    try {
+      const packageJsonContent = await this.readFile("package.json");
+      const pkg = JSON.parse(packageJsonContent);
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+      if (deps.vite) {
+        useLogStore.getState().addLog("normal", "Framework detected: Vite");
+        this.metadata.outFolder = this.metadata.outFolder || "dist";
+      } else if (deps.next) {
+        useLogStore.getState().addLog("normal", "Framework detected: Next.js");
+        this.metadata.outFolder = this.metadata.outFolder || ".next";
+      } else if (deps["@angular/core"]) {
+        useLogStore.getState().addLog("normal", "Framework detected: Angular");
+        this.metadata.outFolder = this.metadata.outFolder || "dist/" + pkg.name;
+      } else if (deps.nuxt) {
+        useLogStore.getState().addLog("normal", "Framework detected: Nuxt");
+        this.metadata.outFolder = this.metadata.outFolder || ".output/public";
+      } else if (deps["@sveltejs/kit"]) {
+        useLogStore.getState().addLog("normal", "Framework detected: SvelteKit");
+        this.metadata.outFolder = this.metadata.outFolder || ".svelte-kit";
+      }
+    } catch (e) {
+      console.warn("Could not detect framework:", e);
+    }
   }
 
   public async DeployToProduction() {

@@ -30,7 +30,8 @@ export interface ProjectMetaData {
   rundev ? : string,
   devtime? : number,
   buildtime? : number,
-  outFolder? : string
+  outFolder? : string,
+  rootFolder?: string
 }
 
 export type Option = "github" | "folder"
